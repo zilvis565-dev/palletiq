@@ -12,28 +12,39 @@
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Inter, Arial, sans-serif; background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%); color: var(--text); }
-    .wrap { max-width: 1440px; margin: 0 auto; padding: 28px; }
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 28px; }
     .hero { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%); color: white; border-radius: 20px; padding: 28px; box-shadow: var(--shadow); margin-bottom: 24px; }
     .hero h1 { margin: 0 0 8px 0; font-size: 32px; }
     .hero p { margin: 0; opacity: 0.94; max-width: 840px; line-height: 1.5; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-top: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .grid { display: grid; grid-template-columns: minmax(520px, 1.35fr) minmax(360px, 0.8fr) minmax(520px, 1.35fr); gap: 18px; align-items: start; }
     .selection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
     .summary-box { background: #f8fbff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
     .summary-box .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
     .summary-box .value { font-size: 20px; font-weight: 700; }
     textarea { width: 100%; min-height: 220px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #fbfdff; color: var(--text); }
-    select, input[type="file"], input[type="text"], input[type="number"] { width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: white; color: var(--text); margin-top: 8px; }
+    select, input[type="file"], input[type="text"], input[type="number"] {
+      width: 100%;
+      min-width: 84px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      margin-top: 8px;
+      font-size: 15px;
+      line-height: 1.2;
+    }
     select[multiple] { min-height: 170px; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     button, a.btn { border: 0; background: var(--primary); color: white; padding: 11px 16px; border-radius: 12px; text-decoration: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
     button.secondary, a.btn.secondary { background: white; color: var(--text); border: 1px solid var(--line); }
     .muted { color: var(--muted); font-size: 14px; }
     .error { background: var(--danger-bg); border: 1px solid var(--danger-line); color: #9f1239; border-radius: 12px; padding: 14px; margin-bottom: 18px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 12px; overflow: hidden; border-radius: 12px; border: 1px solid var(--line); }
-    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; }
-    th { background: #f8fbff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; overflow: hidden; border-radius: 12px; border: 1px solid var(--line); table-layout: auto; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; font-size: 14px; vertical-align: top; }
+    th { background: #f8fbff; white-space: nowrap; }
     .section-note { display: inline-block; background: var(--primary-soft); color: var(--primary); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
     .rule-box { margin-top: 14px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; background: #fbfdff; }
     .check-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
@@ -71,7 +82,17 @@
     .modal-body { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: #f8fbff; }
     .modal-close { background: white; color: var(--text); border: 1px solid var(--line); }
     .modal-body svg { min-width: 1600px; }
-    @media (max-width: 1100px) { .grid, .selection-grid { grid-template-columns: 1fr; } }
+    .w-code { min-width: 110px; }
+    .w-num { min-width: 105px; }
+    .w-small { min-width: 90px; }
+    .w-action { min-width: 110px; }
+    .compact-select { min-width: 120px; }
+    @media (max-width: 1350px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1100px) {
+      .selection-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -114,19 +135,19 @@
                 <table id="box-master-table">
                   <thead>
                     <tr>
-                      <th>Box code</th><th>Length</th><th>Width</th><th>Height</th><th>Weight</th><th>Can rotate</th><th></th>
+                      <th class="w-code">Box code</th><th class="w-num">Length</th><th class="w-num">Width</th><th class="w-num">Height</th><th class="w-num">Weight</th><th class="w-small">Can rotate</th><th class="w-action"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for row in box_master_rows %}
                     <tr>
-                      <td><input type="text" name="box_code[]" value="{{ row.box_code }}"></td>
-                      <td><input type="number" name="box_length[]" value="{{ row.length }}"></td>
-                      <td><input type="number" name="box_width[]" value="{{ row.width }}"></td>
-                      <td><input type="number" name="box_height[]" value="{{ row.height }}"></td>
-                      <td><input type="number" step="0.01" name="box_weight[]" value="{{ row.weight }}"></td>
+                      <td><input type="text" name="box_code[]" value="{{ row.box_code }}" class="w-code"></td>
+                      <td><input type="number" step="1" name="box_length[]" value="{{ row.length }}" class="w-num"></td>
+                      <td><input type="number" step="1" name="box_width[]" value="{{ row.width }}" class="w-num"></td>
+                      <td><input type="number" step="1" name="box_height[]" value="{{ row.height }}" class="w-num"></td>
+                      <td><input type="number" step="0.01" name="box_weight[]" value="{{ row.weight }}" class="w-num"></td>
                       <td>
-                        <select name="box_can_rotate[]">
+                        <select name="box_can_rotate[]" class="compact-select">
                           <option value="1" {% if row.can_rotate %}selected{% endif %}>1</option>
                           <option value="0" {% if not row.can_rotate %}selected{% endif %}>0</option>
                         </select>
@@ -145,19 +166,19 @@
               <div class="table-editor">
                 <table id="order-lines-table">
                   <thead>
-                    <tr><th>Box code</th><th>Qty</th><th></th></tr>
+                    <tr><th class="w-code">Box code</th><th class="w-num">Qty</th><th class="w-action"></th></tr>
                   </thead>
                   <tbody>
                     {% for row in order_lines_rows %}
                     <tr>
                       <td>
-                        <select name="order_box_code[]" class="order-box-select">
+                        <select name="order_box_code[]" class="order-box-select compact-select">
                           {% for box in box_master_rows %}
                           <option value="{{ box.box_code }}" {% if row.box_code == box.box_code %}selected{% endif %}>{{ box.box_code }}</option>
                           {% endfor %}
                         </select>
                       </td>
-                      <td><input type="number" name="order_qty[]" value="{{ row.qty }}"></td>
+                      <td><input type="number" step="1" name="order_qty[]" value="{{ row.qty }}" class="w-num"></td>
                       <td><button type="button" class="secondary" onclick="removeRow(this)">Šalinti</button></td>
                     </tr>
                     {% endfor %}
@@ -173,22 +194,22 @@
                 <table id="pallets-table">
                   <thead>
                     <tr>
-                      <th>Code</th><th>Type</th><th>Length</th><th>Width</th><th>Height</th><th>Max weight</th><th>Tare</th><th>Cost</th><th>Active</th><th></th>
+                      <th class="w-code">Code</th><th class="w-small">Type</th><th class="w-num">Length</th><th class="w-num">Width</th><th class="w-num">Height</th><th class="w-num">Max weight</th><th class="w-num">Tare</th><th class="w-num">Cost</th><th class="w-small">Active</th><th class="w-action"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for row in pallets_rows %}
                     <tr>
-                      <td><input type="text" name="pallet_code[]" value="{{ row.code }}"></td>
-                      <td><input type="text" name="pallet_type[]" value="{{ row.type }}"></td>
-                      <td><input type="number" name="pallet_length[]" value="{{ row.length }}"></td>
-                      <td><input type="number" name="pallet_width[]" value="{{ row.width }}"></td>
-                      <td><input type="number" name="pallet_height[]" value="{{ row.height }}"></td>
-                      <td><input type="number" step="0.01" name="pallet_max_weight[]" value="{{ row.max_weight }}"></td>
-                      <td><input type="number" step="0.01" name="pallet_tare_weight[]" value="{{ row.tare_weight }}"></td>
-                      <td><input type="number" step="0.01" name="pallet_cost[]" value="{{ row.cost }}"></td>
+                      <td><input type="text" name="pallet_code[]" value="{{ row.code }}" class="w-code"></td>
+                      <td><input type="text" name="pallet_type[]" value="{{ row.type }}" class="w-small"></td>
+                      <td><input type="number" step="1" name="pallet_length[]" value="{{ row.length }}" class="w-num"></td>
+                      <td><input type="number" step="1" name="pallet_width[]" value="{{ row.width }}" class="w-num"></td>
+                      <td><input type="number" step="1" name="pallet_height[]" value="{{ row.height }}" class="w-num"></td>
+                      <td><input type="number" step="0.01" name="pallet_max_weight[]" value="{{ row.max_weight }}" class="w-num"></td>
+                      <td><input type="number" step="0.01" name="pallet_tare_weight[]" value="{{ row.tare_weight }}" class="w-num"></td>
+                      <td><input type="number" step="0.01" name="pallet_cost[]" value="{{ row.cost }}" class="w-num"></td>
                       <td>
-                        <select name="pallet_active[]">
+                        <select name="pallet_active[]" class="compact-select">
                           <option value="1" {% if row.active %}selected{% endif %}>1</option>
                           <option value="0" {% if not row.active %}selected{% endif %}>0</option>
                         </select>
@@ -270,54 +291,14 @@
       </div>
     </form>
 
-    <div class="card">
-      <div class="section-note">CSV formatai</div>
-      <p><strong>Order lines CSV:</strong> `box_code,qty`</p>
-      <p><strong>Box master CSV:</strong> `box_code,length,width,height,weight,can_rotate`</p>
-      <p><strong>Pallets CSV:</strong> `code,type,length,width,height,max_weight,tare_weight,cost,active`</p>
-    </div>
-
-    <div class="card">
-      <div class="section-note">Vizualizacija</div>
-      <div class="view-switch">
-        <button type="button" class="view-btn active" data-view="iso">Izometrinis vaizdas</button>
-        <button type="button" class="view-btn" data-view="top">Vaizdas iš viršaus</button>
-      </div>
-      <div class="viz-actions">
-        <button type="button" class="secondary" id="open-single-large">Atidaryti didelį vienos paletės vaizdą</button>
-        <button type="button" class="secondary" id="open-multi-large">Atidaryti didelį kelių palečių vaizdą</button>
-      </div>
-      <div class="viz-wrap">
-        <div class="viz-box"><div class="viz-title">Vienos paletės vaizdas</div><div id="single-visualization"></div></div>
-        <div class="viz-box"><div class="viz-title">Kelių palečių vaizdas</div><div id="multi-visualization"></div></div>
-      </div>
-      <div id="legend" class="legend"></div>
-    </div>
-  </div>
-
-  <div class="modal" id="viz-modal">
-    <div class="modal-card">
-      <div class="modal-head">
-        <div class="modal-title" id="modal-title">Didelis vaizdas</div>
-        <button type="button" class="modal-close" id="close-modal">Uždaryti</button>
-      </div>
-      <div class="modal-body" id="modal-body"></div>
-    </div>
+    <div class="card"><div class="section-note">Vizualizacija</div><div id="legend" class="legend"></div></div>
   </div>
 
   <script>
-    const visuals = {{ visuals_json|safe }};
-    let currentView = 'iso';
-    const palette = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#0f766e'];
-
     function removeRow(btn) { btn.closest('tr').remove(); refreshOrderSelects(); }
-
     function getBoxCodes() {
-      return Array.from(document.querySelectorAll('input[name="box_code[]"]'))
-        .map(i => i.value.trim())
-        .filter(Boolean);
+      return Array.from(document.querySelectorAll('input[name="box_code[]"]')).map(i => i.value.trim()).filter(Boolean);
     }
-
     function refreshOrderSelects() {
       const codes = getBoxCodes();
       document.querySelectorAll('.order-box-select').forEach(select => {
@@ -326,57 +307,50 @@
         if (codes.includes(current)) select.value = current;
       });
     }
-
     document.getElementById('add-box-row').addEventListener('click', () => {
       const tbody = document.querySelector('#box-master-table tbody');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="box_code[]"></td>
-        <td><input type="number" name="box_length[]"></td>
-        <td><input type="number" name="box_width[]"></td>
-        <td><input type="number" name="box_height[]"></td>
-        <td><input type="number" step="0.01" name="box_weight[]"></td>
-        <td><select name="box_can_rotate[]"><option value="1">1</option><option value="0">0</option></select></td>
+        <td><input type="text" name="box_code[]" class="w-code"></td>
+        <td><input type="number" step="1" name="box_length[]" class="w-num"></td>
+        <td><input type="number" step="1" name="box_width[]" class="w-num"></td>
+        <td><input type="number" step="1" name="box_height[]" class="w-num"></td>
+        <td><input type="number" step="0.01" name="box_weight[]" class="w-num"></td>
+        <td><select name="box_can_rotate[]" class="compact-select"><option value="1">1</option><option value="0">0</option></select></td>
         <td><button type="button" class="secondary" onclick="removeRow(this)">Šalinti</button></td>
       `;
       tbody.appendChild(tr);
     });
-
     document.getElementById('add-order-row').addEventListener('click', () => {
       const codes = getBoxCodes();
       const tbody = document.querySelector('#order-lines-table tbody');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><select name="order_box_code[]" class="order-box-select">${codes.map(code => `<option value="${code}">${code}</option>`).join('')}</select></td>
-        <td><input type="number" name="order_qty[]"></td>
+        <td><select name="order_box_code[]" class="order-box-select compact-select">${codes.map(code => `<option value="${code}">${code}</option>`).join('')}</select></td>
+        <td><input type="number" step="1" name="order_qty[]" class="w-num"></td>
         <td><button type="button" class="secondary" onclick="removeRow(this)">Šalinti</button></td>
       `;
       tbody.appendChild(tr);
     });
-
     document.getElementById('add-pallet-row').addEventListener('click', () => {
       const tbody = document.querySelector('#pallets-table tbody');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" name="pallet_code[]"></td>
-        <td><input type="text" name="pallet_type[]" value="PALLET"></td>
-        <td><input type="number" name="pallet_length[]"></td>
-        <td><input type="number" name="pallet_width[]"></td>
-        <td><input type="number" name="pallet_height[]"></td>
-        <td><input type="number" step="0.01" name="pallet_max_weight[]"></td>
-        <td><input type="number" step="0.01" name="pallet_tare_weight[]"></td>
-        <td><input type="number" step="0.01" name="pallet_cost[]"></td>
-        <td><select name="pallet_active[]"><option value="1">1</option><option value="0">0</option></select></td>
+        <td><input type="text" name="pallet_code[]" class="w-code"></td>
+        <td><input type="text" name="pallet_type[]" value="PALLET" class="w-small"></td>
+        <td><input type="number" step="1" name="pallet_length[]" class="w-num"></td>
+        <td><input type="number" step="1" name="pallet_width[]" class="w-num"></td>
+        <td><input type="number" step="1" name="pallet_height[]" class="w-num"></td>
+        <td><input type="number" step="0.01" name="pallet_max_weight[]" class="w-num"></td>
+        <td><input type="number" step="0.01" name="pallet_tare_weight[]" class="w-num"></td>
+        <td><input type="number" step="0.01" name="pallet_cost[]" class="w-num"></td>
+        <td><select name="pallet_active[]" class="compact-select"><option value="1">1</option><option value="0">0</option></select></td>
         <td><button type="button" class="secondary" onclick="removeRow(this)">Šalinti</button></td>
       `;
       tbody.appendChild(tr);
     });
-
     document.querySelectorAll('input[name="box_code[]"]').forEach(i => i.addEventListener('input', refreshOrderSelects));
-    document.addEventListener('input', e => {
-      if (e.target && e.target.name === 'box_code[]') refreshOrderSelects();
-    });
-
+    document.addEventListener('input', e => { if (e.target && e.target.name === 'box_code[]') refreshOrderSelects(); });
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -386,122 +360,6 @@
         document.getElementById('input_mode').value = btn.dataset.tab === 'table-mode' ? 'table' : 'csv';
       });
     });
-
-    function colorForSku(sku, map) {
-      if (!map[sku]) {
-        const idx = Object.keys(map).length % palette.length;
-        map[sku] = palette[idx];
-      }
-      return map[sku];
-    }
-    function shadeColor(hex, percent) {
-      const num = parseInt(hex.replace('#', ''), 16);
-      const amt = Math.round(2.55 * percent);
-      const r = (num >> 16) + amt;
-      const g = (num >> 8 & 0x00FF) + amt;
-      const b = (num & 0x0000FF) + amt;
-      return '#' + (0x1000000 + (r < 255 ? (r < 0 ? 0 : r) : 255) * 0x10000 + (g < 255 ? (g < 0 ? 0 : g) : 255) * 0x100 + (b < 255 ? (b < 0 ? 0 : b) : 255)).toString(16).slice(1);
-    }
-    function iso(x, y, z, scale, originX, originY) { return { x: originX + (x - y) * scale, y: originY + (x + y) * scale * 0.5 - z * scale * 0.8 }; }
-    function boxPolygons(p, scale, originX, originY) {
-      const x = p.x, y = p.y, z = p.z, l = p.length, w = p.width, h = p.height;
-      const a = iso(x, y, z, scale, originX, originY), b = iso(x + l, y, z, scale, originX, originY), c = iso(x + l, y + w, z, scale, originX, originY), d = iso(x, y + w, z, scale, originX, originY);
-      const e = iso(x, y, z + h, scale, originX, originY), f = iso(x + l, y, z + h, scale, originX, originY), g = iso(x + l, y + w, z + h, scale, originX, originY), h1 = iso(x, y + w, z + h, scale, originX, originY);
-      return { top: [e, f, g, h1], left: [e, h1, d, a], right: [f, g, c, b] };
-    }
-    function pointsToString(points) { return points.map(p => `${p.x},${p.y}`).join(' '); }
-
-    function renderBlock(block, colorMap, large = false) {
-      const container = block.container;
-      const placements = [...block.placements].sort((a, b) => (a.z + a.y + a.x) - (b.z + b.y + b.x));
-      let html = '';
-      html += `<div class="viz-meta"><div class="viz-stat"><div class="k">Paletė</div><div class="v">${container.code}</div></div><div class="viz-stat"><div class="k">Matmenys</div><div class="v">${container.length}×${container.width}×${container.height}</div></div><div class="viz-stat"><div class="k">Užpildymas</div><div class="v">${block.utilization}%</div></div><div class="viz-stat"><div class="k">Svoris</div><div class="v">${block.total_weight}</div></div></div>`;
-      if (currentView === 'iso') {
-        const dimSum = container.length + container.width + container.height;
-        const scale = Math.max(0.12, Math.min(large ? 0.34 : 0.22, (large ? 980 : 680) / Math.max(dimSum, 1)));
-        const isoA = iso(0, 0, 0, scale, 0, 0), isoB = iso(container.length, 0, 0, scale, 0, 0), isoC = iso(container.length, container.width, 0, scale, 0, 0), isoD = iso(0, container.width, 0, scale, 0, 0), isoTop = iso(container.length, container.width, container.height, scale, 0, 0);
-        const allPts = [isoA, isoB, isoC, isoD, isoTop];
-        placements.forEach(p => { const polys = boxPolygons(p, scale, 0, 0); allPts.push(...polys.top, ...polys.left, ...polys.right); });
-        const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
-        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-        const pad = large ? 120 : 80, shiftX = pad - minX, shiftY = pad - minY, viewW = Math.ceil((maxX - minX) + pad * 2), viewH = Math.ceil((maxY - minY) + pad * 2);
-        const move = pt => ({ x: pt.x + shiftX, y: pt.y + shiftY });
-        html += '<div class="viz-canvas">';
-        html += `<svg viewBox="0 0 ${viewW} ${viewH}" preserveAspectRatio="xMinYMin meet">`;
-        html += `<polygon points="${pointsToString([move(isoA), move(isoB), move(isoC), move(isoD)])}" fill="#e7edf7" stroke="#b8c7dd" stroke-width="1.2"></polygon>`;
-        placements.forEach(p => {
-          const color = colorForSku(p.sku, colorMap), polys = boxPolygons(p, scale, 0, 0);
-          html += `<polygon points="${pointsToString(polys.left.map(move))}" fill="${shadeColor(color, -18)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.right.map(move))}" fill="${shadeColor(color, -8)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.top.map(move))}" fill="${shadeColor(color, 10)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
-        });
-        html += '</svg></div>';
-      } else {
-        const svgW = large ? 1800 : 1200, svgH = large ? 1100 : 760, pad = 40, scale = Math.min((svgW - pad * 2) / container.length, (svgH - pad * 2) / container.width);
-        html += '<div class="viz-canvas">';
-        html += `<svg viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">`;
-        html += `<rect x="${pad}" y="${pad}" width="${container.length * scale}" height="${container.width * scale}" fill="#eef4fb" stroke="#b8c7dd" stroke-width="2"></rect>`;
-        placements.forEach(p => {
-          const color = colorForSku(p.sku, colorMap), x = pad + p.x * scale, y = pad + p.y * scale, w = p.length * scale, h = p.width * scale;
-          html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="0.88" stroke="#1f2937" stroke-width="0.8"></rect>`;
-          html += `<text x="${x + 4}" y="${y + 14}" font-size="11" fill="#fff">${p.sku}</text>`;
-        });
-        html += '</svg></div>';
-      }
-      if (block.counts && block.counts.length) {
-        html += '<div class="count-chips">';
-        block.counts.forEach(c => {
-          const color = colorForSku(c.sku, colorMap);
-          html += `<div class="count-chip"><span class="legend-color" style="background:${color}; margin-right:8px;"></span>${c.sku}: ${c.qty} vnt</div>`;
-        });
-        html += '</div>';
-      }
-      return html;
-    }
-
-    function renderVisualization(targetId, blocks, large = false) {
-      const el = document.getElementById(targetId);
-      if (!el) return;
-      if (!blocks || !blocks.length) { el.innerHTML = '<p class="muted">Kol kas nėra duomenų vizualizacijai.</p>'; return; }
-      const colorMap = window.__skuColorMap || (window.__skuColorMap = {});
-      let html = '';
-      blocks.forEach((block, idx) => { html += `<div class="viz-title">${block.container.code}${blocks.length > 1 ? ' #' + (idx + 1) : ''}</div>`; html += renderBlock(block, colorMap, large); });
-      el.innerHTML = html; renderLegend(colorMap);
-    }
-
-    function renderLegend(colorMap) {
-      const legend = document.getElementById('legend'); if (!legend) return;
-      const items = Object.entries(colorMap);
-      legend.innerHTML = items.map(([sku, color]) => `<div class="legend-item"><span class="legend-color" style="background:${color}"></span><span>${sku}</span></div>`).join('');
-    }
-
-    function rerenderAll() {
-      const singleBlocks = visuals.single ? [visuals.single] : [];
-      const multiBlocks = visuals.multi || [];
-      renderVisualization('single-visualization', singleBlocks, false);
-      renderVisualization('multi-visualization', multiBlocks, false);
-    }
-
-    function openLarge(title, blocks) {
-      const modal = document.getElementById('viz-modal');
-      document.getElementById('modal-title').textContent = title;
-      renderVisualization('modal-body', blocks, true);
-      modal.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeLarge() { document.getElementById('viz-modal').classList.remove('open'); document.body.style.overflow = ''; }
-
-    document.querySelectorAll('.view-btn').forEach(btn => btn.addEventListener('click', () => {
-      document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); currentView = btn.dataset.view; rerenderAll();
-    }));
-
-    document.getElementById('open-single-large').addEventListener('click', () => openLarge('Didelis vienos paletės vaizdas', visuals.single ? [visuals.single] : []));
-    document.getElementById('open-multi-large').addEventListener('click', () => openLarge('Didelis kelių palečių vaizdas', visuals.multi || []));
-    document.getElementById('close-modal').addEventListener('click', closeLarge);
-    document.getElementById('viz-modal').addEventListener('click', e => { if (e.target.id === 'viz-modal') closeLarge(); });
-
-    rerenderAll();
     refreshOrderSelects();
   </script>
 </body>
