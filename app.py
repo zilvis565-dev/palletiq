@@ -237,6 +237,10 @@ def index():
     big_boxes_bottom = True
     heavier_boxes_bottom = True
     min_support_ratio_value = 0.85
+    prefer_same_sku_blocks = True
+    minimize_mixing = True
+    finish_current_sku_first = True
+    layer_purity = True
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -291,6 +295,10 @@ def index():
         heavier_boxes_bottom = request.form.get('heavier_boxes_bottom') == 'on'
         min_support_ratio_value = float(request.form.get('min_support_ratio_value', '0.85') or '0.85')
         min_support_ratio_value = max(0.0, min(1.0, min_support_ratio_value))
+        prefer_same_sku_blocks = request.form.get('prefer_same_sku_blocks') == 'on'
+        minimize_mixing = request.form.get('minimize_mixing') == 'on'
+        finish_current_sku_first = request.form.get('finish_current_sku_first') == 'on'
+        layer_purity = request.form.get('layer_purity') == 'on'
         pallet_options = serialize_pallet_options(pallets_rows)
 
         if action == 'run' and not error_message:
@@ -302,6 +310,10 @@ def index():
                     'big_boxes_bottom': big_boxes_bottom,
                     'heavier_boxes_bottom': heavier_boxes_bottom,
                     'min_support_ratio_value': min_support_ratio_value,
+                    'prefer_same_sku_blocks': prefer_same_sku_blocks,
+                    'minimize_mixing': minimize_mixing,
+                    'finish_current_sku_first': finish_current_sku_first,
+                    'layer_purity': layer_purity,
                 }
 
                 if pallet_strategy == 'single':
@@ -353,6 +365,10 @@ def index():
         big_boxes_bottom=big_boxes_bottom,
         heavier_boxes_bottom=heavier_boxes_bottom,
         min_support_ratio_value=min_support_ratio_value,
+        prefer_same_sku_blocks=prefer_same_sku_blocks,
+        minimize_mixing=minimize_mixing,
+        finish_current_sku_first=finish_current_sku_first,
+        layer_purity=layer_purity,
     )
 
 
