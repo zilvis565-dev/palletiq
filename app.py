@@ -1,15 +1,20 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_file
 import csv
 import io
+import os
 from packing_engine import (
     Item,
     Container,
     choose_box_then_pallet,
     choose_multiple_containers,
-    load_items_from_csv,
+    export_single_result_to_csv,
+    export_multiple_results_to_csv,
 )
 
 app = Flask(__name__)
+
+LAST_SINGLE_RESULT_PATH = 'results.csv'
+LAST_MULTI_RESULT_PATH = 'results_multi.csv'
 
 
 def parse_items_csv_text(csv_text: str):
@@ -61,24 +66,38 @@ def index():
     multi_result = None
     error_message = None
 
-    items_text = load_text_file('items_sample.csv')
-    boxes_text = load_text_file('boxes.csv')
-    pallets_text = load_text_file('pallets.csv')
+    sample_items = load_text_file('items_sample.csv')
+    sample_boxes = load_text_file('boxes.csv')
+    sample_pallets = load_text_file('pallets.csv')
+
+    items_text = sample_items
+    boxes_text = sample_boxes
+    pallets_text = sample_pallets
 
     if request.method == 'POST':
-        items_text = request.form.get('items_csv', '').strip()
-        boxes_text = request.form.get('boxes_csv', '').strip()
-        pallets_text = request.form.get('pallets_csv', '').strip()
+        action = request.form.get('action', 'run')
 
-        try:
-            items = parse_items_csv_text(items_text)
-            boxes = parse_containers_csv_text(boxes_text)
-            pallets = parse_containers_csv_text(pallets_text)
+        if action == 'sample':
+            items_text = sample_items
+            boxes_text = sample_boxes
+            pallets_text = sample_pallets
+        else:
+            items_text = request.form.get('items_csv', '').strip()
+            boxes_text = request.form.get('boxes_csv', '').strip()
+            pallets_text = request.form.get('pallets_csv', '').strip()
 
-            single_result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
-            multi_result = choose_multiple_containers(items, boxes + pallets, mode='smallest_fit')
-        except Exception as e:
-            error_message = str(e)
+            try:
+                items = parse_items_csv_text(items_text)
+                boxes = parse_containers_csv_text(boxes_text)
+                pallets = parse_containers_csv_text(pallets_text)
+
+                single_result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
+                multi_result = choose_multiple_containers(items, boxes + pallets, mode='smallest_fit')
+
+                export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
+                export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
+            except Exception as e:
+                error_message = str(e)
 
     return render_template(
         'index.html',
@@ -89,6 +108,20 @@ def index():
         multi_result=multi_result,
         error_message=error_message,
     )
+
+
+@app.route('/download/single')
+def download_single():
+    if os.path.exists(LAST_SINGLE_RESULT_PATH):
+        return send_file(LAST_SINGLE_RESULT_PATH, as_attachment=True)
+    return 'Single result file not found', 404
+
+
+@app.route('/download/multi')
+def download_multi():
+    if os.path.exists(LAST_MULTI_RESULT_PATH):
+        return send_file(LAST_MULTI_RESULT_PATH, as_attachment=True)
+    return 'Multi result file not found', 404
 
 
 if __name__ == '__main__':
