@@ -329,10 +329,10 @@ def main():
     if result['success']:
         selected = result['selected_container']
         print(f'Selected container: {selected.code} ({selected.type})')
-        print(f'Utilization: {result['utilization']:.2%}')
-        print(f'Used volume: {result['used_volume']}')
-        print(f'Total volume: {result['total_volume']}')
-        print(f'Total weight: {result['total_weight']}')
+        print(f"Utilization: {result['utilization']:.2%}")
+        print(f"Used volume: {result['used_volume']}")
+        print(f"Total volume: {result['total_volume']}")
+        print(f"Total weight: {result['total_weight']}")
         print('Placements:')
         for p in result['placements']:
             print(f' - {p.sku}: pos=({p.x},{p.y},{p.z}), size=({p.length},{p.width},{p.height})')
