@@ -61,7 +61,7 @@ def get_orientations(item: Item) -> List[Tuple[int, int, int]]:
             for c in dims:
                 if sorted((a, b, c)) == sorted(dims):
                     orientations.add((a, b, c))
-    return list(orientations)
+    return sorted(list(orientations))
 
 
 def expand_items(items: List[Item]) -> List[Item]:
@@ -90,6 +90,10 @@ def space_volume(space: Space) -> int:
     return space.length * space.width * space.height
 
 
+def container_volume(container: Container) -> int:
+    return container.length * container.width * container.height
+
+
 def can_fit(space: Space, dims: Tuple[int, int, int]) -> bool:
     l, w, h = dims
     return l <= space.length and w <= space.width and h <= space.height
@@ -109,8 +113,8 @@ def split_space(space: Space, px: int, py: int, pz: int, pl: int, pw: int, ph: i
         y=py,
         z=pz,
         length=space.x + space.length - (px + pl),
-        width=pw,
-        height=ph,
+        width=space.width,
+        height=space.height,
     )
     if right.length > 0 and right.width > 0 and right.height > 0:
         new_spaces.append(right)
@@ -119,9 +123,9 @@ def split_space(space: Space, px: int, py: int, pz: int, pl: int, pw: int, ph: i
         x=px,
         y=py + pw,
         z=pz,
-        length=space.length,
+        length=pl,
         width=space.y + space.width - (py + pw),
-        height=ph,
+        height=space.height,
     )
     if front.length > 0 and front.width > 0 and front.height > 0:
         new_spaces.append(front)
@@ -130,8 +134,8 @@ def split_space(space: Space, px: int, py: int, pz: int, pl: int, pw: int, ph: i
         x=px,
         y=py,
         z=pz + ph,
-        length=space.length,
-        width=space.width,
+        length=pl,
+        width=pw,
         height=space.z + space.height - (pz + ph),
     )
     if above.length > 0 and above.width > 0 and above.height > 0:
@@ -169,6 +173,10 @@ def pack_into_container(items: List[Item], container: Container) -> Dict:
             'container': container,
             'placements': [],
             'unplaced_items': items,
+            'used_volume': 0,
+            'total_volume': container_volume(container),
+            'utilization': 0.0,
+            'total_weight': 0.0,
         }
 
     total_item_weight = sum(i.weight for i in items)
@@ -179,6 +187,10 @@ def pack_into_container(items: List[Item], container: Container) -> Dict:
             'container': container,
             'placements': [],
             'unplaced_items': items,
+            'used_volume': 0,
+            'total_volume': container_volume(container),
+            'utilization': 0.0,
+            'total_weight': total_item_weight + container.tare_weight,
         }
 
     spaces = [Space(0, 0, 0, container.length, container.width, container.height)]
@@ -227,8 +239,8 @@ def pack_into_container(items: List[Item], container: Container) -> Dict:
         spaces = prune_spaces(spaces)
 
     used_volume = sum(p.length * p.width * p.height for p in placements)
-    total_volume = container.length * container.width * container.height
-    utilization = used_volume / total_volume if total_volume > 0 else 0
+    total_volume = container_volume(container)
+    utilization = used_volume / total_volume if total_volume > 0 else 0.0
 
     return {
         'success': len(unplaced) == 0,
@@ -278,6 +290,25 @@ def choose_best_container(items: List[Item], containers: List[Container], mode: 
     }
 
 
+def choose_box_then_pallet(items: List[Item], boxes: List[Container], pallets: List[Container], mode: str = 'smallest_fit') -> Dict:
+    box_result = choose_best_container(items, boxes, mode)
+    if box_result['success']:
+        box_result['selection_policy'] = 'box_first'
+        return box_result
+
+    pallet_result = choose_best_container(items, pallets, mode)
+    if pallet_result['success']:
+        pallet_result['selection_policy'] = 'box_first_fallback_to_pallet'
+        return pallet_result
+
+    return {
+        'success': False,
+        'reason': 'No box or pallet could fit all items',
+        'box_results': box_result.get('all_results', []),
+        'pallet_results': pallet_result.get('all_results', []),
+    }
+
+
 def load_items_from_csv(file_path: str) -> List[Item]:
     items = []
     with open(file_path, newline='', encoding='utf-8') as f:
@@ -318,28 +349,45 @@ def load_containers_from_csv(file_path: str) -> List[Container]:
     return containers
 
 
-def main():
-    items = load_items_from_csv('items_sample.csv')
-    boxes = load_containers_from_csv('boxes.csv')
-    pallets = load_containers_from_csv('pallets.csv')
-    all_containers = boxes + pallets
-
-    result = choose_best_container(items, all_containers, mode='smallest_fit')
-
+def print_result(result: Dict) -> None:
     if result['success']:
         selected = result['selected_container']
-        print(f'Selected container: {selected.code} ({selected.type})')
+        print(f"Selected container: {selected.code} ({selected.type})")
+        if 'selection_policy' in result:
+            print(f"Selection policy: {result['selection_policy']}")
         print(f"Utilization: {result['utilization']:.2%}")
         print(f"Used volume: {result['used_volume']}")
         print(f"Total volume: {result['total_volume']}")
         print(f"Total weight: {result['total_weight']}")
         print('Placements:')
         for p in result['placements']:
-            print(f' - {p.sku}: pos=({p.x},{p.y},{p.z}), size=({p.length},{p.width},{p.height})')
+            print(
+                f" - {p.sku}: pos=({p.x},{p.y},{p.z}), "
+                f"size=({p.length},{p.width},{p.height})"
+            )
     else:
-        print('No suitable container found')
-        for r in result['all_results']:
-            print(r['container'].code, r['reason'])
+        print(result['reason'])
+        if 'box_results' in result:
+            print('Box attempts:')
+            for r in result['box_results']:
+                print(f" - {r['container'].code}: {r['reason']}")
+        if 'pallet_results' in result:
+            print('Pallet attempts:')
+            for r in result['pallet_results']:
+                print(f" - {r['container'].code}: {r['reason']}")
+        elif 'all_results' in result:
+            print('Container attempts:')
+            for r in result['all_results']:
+                print(f" - {r['container'].code}: {r['reason']}")
+
+
+def main():
+    items = load_items_from_csv('items_sample.csv')
+    boxes = load_containers_from_csv('boxes.csv')
+    pallets = load_containers_from_csv('pallets.csv')
+
+    result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
+    print_result(result)
 
 
 if __name__ == '__main__':
