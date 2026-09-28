@@ -1,0 +1,4 @@
+box_code,length,width,height,weight,can_rotate
+BX001,400,300,250,5,1
+BX002,500,250,200,6,1
+BX003,300,200,150,3,1
