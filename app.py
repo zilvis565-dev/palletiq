@@ -235,6 +235,8 @@ def index():
     selected_pallet_codes = []
     pallet_options = serialize_pallet_options(pallets_rows)
     big_boxes_bottom = True
+    heavier_boxes_bottom = True
+    min_support_ratio_value = 0.85
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -286,34 +288,43 @@ def index():
         selected_single_pallet = request.form.get('single_pallet_code', '')
         selected_pallet_codes = request.form.getlist('selected_pallet_codes')
         big_boxes_bottom = request.form.get('big_boxes_bottom') == 'on'
+        heavier_boxes_bottom = request.form.get('heavier_boxes_bottom') == 'on'
+        min_support_ratio_value = float(request.form.get('min_support_ratio_value', '0.85') or '0.85')
+        min_support_ratio_value = max(0.0, min(1.0, min_support_ratio_value))
         pallet_options = serialize_pallet_options(pallets_rows)
 
         if action == 'run' and not error_message:
             try:
                 items = expand_order_lines(order_lines_rows, box_master_rows)
                 pallets = pallets_rows
+                common_kwargs = {
+                    'mode': 'smallest_fit',
+                    'big_boxes_bottom': big_boxes_bottom,
+                    'heavier_boxes_bottom': heavier_boxes_bottom,
+                    'min_support_ratio_value': min_support_ratio_value,
+                }
 
                 if pallet_strategy == 'single':
                     filtered_pallets = [p for p in pallets if p.code == selected_single_pallet]
                     if not filtered_pallets:
                         raise ValueError('Pasirink vieną paletę')
-                    single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    single_result = choose_best_container(items, filtered_pallets, **common_kwargs)
                     if single_result.get('success'):
                         single_result['selection_policy'] = 'single_pallet'
-                    multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    multi_result = choose_multiple_containers(items, filtered_pallets, **common_kwargs)
                 elif pallet_strategy == 'selected':
                     filtered_pallets = [p for p in pallets if p.code in selected_pallet_codes]
                     if not filtered_pallets:
                         raise ValueError('Pasirink bent vieną paletę iš sąrašo')
-                    single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    single_result = choose_best_container(items, filtered_pallets, **common_kwargs)
                     if single_result.get('success'):
                         single_result['selection_policy'] = 'selected_pallet_pool'
-                    multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    multi_result = choose_multiple_containers(items, filtered_pallets, **common_kwargs)
                 else:
-                    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    single_result = choose_best_container(items, pallets, **common_kwargs)
                     if single_result.get('success'):
                         single_result['selection_policy'] = 'best_single_pallet_type'
-                    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    multi_result = choose_multiple_containers(items, pallets, **common_kwargs)
 
                 export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
                 export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
@@ -340,6 +351,8 @@ def index():
         pallet_options=pallet_options,
         visuals_json=json.dumps(visuals),
         big_boxes_bottom=big_boxes_bottom,
+        heavier_boxes_bottom=heavier_boxes_bottom,
+        min_support_ratio_value=min_support_ratio_value,
     )
 
 
