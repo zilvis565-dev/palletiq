@@ -309,6 +309,154 @@ def choose_box_then_pallet(items: List[Item], boxes: List[Container], pallets: L
     }
 
 
+def choose_multiple_containers(items: List[Item], containers: List[Container], mode: str = 'smallest_fit') -> Dict:
+    remaining_items = expand_items(items)
+    shipments = []
+
+    while remaining_items:
+        best_result = None
+
+        for container in containers:
+            attempt = pack_into_container(remaining_items, container)
+            placed_count = len(attempt['placements'])
+
+            if placed_count == 0:
+                continue
+
+            candidate = (
+                -placed_count,
+                attempt['total_volume'],
+                attempt['container'].cost,
+                -attempt['utilization'],
+                attempt,
+            )
+
+            if best_result is None or candidate[:-1] < best_result[:-1]:
+                best_result = candidate
+
+        if best_result is None:
+            return {
+                'success': False,
+                'reason': 'Could not place remaining items into any container',
+                'shipments': shipments,
+                'unplaced_items': remaining_items,
+            }
+
+        chosen = best_result[-1]
+        shipments.append(chosen)
+        remaining_items = chosen['unplaced_items']
+
+    total_cost = sum(s['container'].cost for s in shipments)
+    total_weight = sum(s['total_weight'] for s in shipments)
+    total_used_volume = sum(s['used_volume'] for s in shipments)
+    total_volume = sum(s['total_volume'] for s in shipments)
+
+    return {
+        'success': True,
+        'selection_policy': 'multiple_containers',
+        'shipments': shipments,
+        'shipment_count': len(shipments),
+        'total_cost': total_cost,
+        'total_weight': total_weight,
+        'total_used_volume': total_used_volume,
+        'total_volume': total_volume,
+        'overall_utilization': total_used_volume / total_volume if total_volume > 0 else 0.0,
+        'unplaced_items': [],
+    }
+
+
+def export_single_result_to_csv(result: Dict, file_path: str = 'results.csv') -> None:
+    with open(file_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            'container_code',
+            'container_type',
+            'selection_policy',
+            'utilization',
+            'used_volume',
+            'total_volume',
+            'total_weight',
+            'sku',
+            'x',
+            'y',
+            'z',
+            'length',
+            'width',
+            'height',
+            'item_weight',
+        ])
+
+        if not result['success']:
+            return
+
+        selected = result['selected_container']
+        policy = result.get('selection_policy', 'single_container')
+        for p in result['placements']:
+            writer.writerow([
+                selected.code,
+                selected.type,
+                policy,
+                result['utilization'],
+                result['used_volume'],
+                result['total_volume'],
+                result['total_weight'],
+                p.sku,
+                p.x,
+                p.y,
+                p.z,
+                p.length,
+                p.width,
+                p.height,
+                p.weight,
+            ])
+
+
+def export_multiple_results_to_csv(result: Dict, file_path: str = 'results_multi.csv') -> None:
+    with open(file_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            'shipment_no',
+            'container_code',
+            'container_type',
+            'utilization',
+            'used_volume',
+            'total_volume',
+            'total_weight',
+            'sku',
+            'x',
+            'y',
+            'z',
+            'length',
+            'width',
+            'height',
+            'item_weight',
+        ])
+
+        if not result['success']:
+            return
+
+        for idx, shipment in enumerate(result['shipments'], start=1):
+            container = shipment['container']
+            for p in shipment['placements']:
+                writer.writerow([
+                    idx,
+                    container.code,
+                    container.type,
+                    shipment['utilization'],
+                    shipment['used_volume'],
+                    shipment['total_volume'],
+                    shipment['total_weight'],
+                    p.sku,
+                    p.x,
+                    p.y,
+                    p.z,
+                    p.length,
+                    p.width,
+                    p.height,
+                    p.weight,
+                ])
+
+
 def load_items_from_csv(file_path: str) -> List[Item]:
     items = []
     with open(file_path, newline='', encoding='utf-8') as f:
@@ -350,7 +498,7 @@ def load_containers_from_csv(file_path: str) -> List[Container]:
 
 
 def print_result(result: Dict) -> None:
-    if result['success']:
+    if result['success'] and 'selected_container' in result:
         selected = result['selected_container']
         print(f"Selected container: {selected.code} ({selected.type})")
         if 'selection_policy' in result:
@@ -365,6 +513,24 @@ def print_result(result: Dict) -> None:
                 f" - {p.sku}: pos=({p.x},{p.y},{p.z}), "
                 f"size=({p.length},{p.width},{p.height})"
             )
+    elif result['success'] and 'shipments' in result:
+        print(f"Selection policy: {result['selection_policy']}")
+        print(f"Shipment count: {result['shipment_count']}")
+        print(f"Total cost: {result['total_cost']}")
+        print(f"Total weight: {result['total_weight']}")
+        print(f"Overall utilization: {result['overall_utilization']:.2%}")
+        for idx, shipment in enumerate(result['shipments'], start=1):
+            container = shipment['container']
+            print(f"Shipment {idx}: {container.code} ({container.type})")
+            print(f" - Utilization: {shipment['utilization']:.2%}")
+            print(f" - Used volume: {shipment['used_volume']}")
+            print(f" - Total volume: {shipment['total_volume']}")
+            print(f" - Total weight: {shipment['total_weight']}")
+            for p in shipment['placements']:
+                print(
+                    f"   - {p.sku}: pos=({p.x},{p.y},{p.z}), "
+                    f"size=({p.length},{p.width},{p.height})"
+                )
     else:
         print(result['reason'])
         if 'box_results' in result:
@@ -379,6 +545,10 @@ def print_result(result: Dict) -> None:
             print('Container attempts:')
             for r in result['all_results']:
                 print(f" - {r['container'].code}: {r['reason']}")
+        if 'unplaced_items' in result and result['unplaced_items']:
+            print('Unplaced items:')
+            for item in result['unplaced_items']:
+                print(f" - {item.sku}: {item.length}x{item.width}x{item.height}, weight={item.weight}")
 
 
 def main():
@@ -386,8 +556,16 @@ def main():
     boxes = load_containers_from_csv('boxes.csv')
     pallets = load_containers_from_csv('pallets.csv')
 
-    result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
-    print_result(result)
+    single_result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
+    print('=== SINGLE CONTAINER RESULT ===')
+    print_result(single_result)
+    export_single_result_to_csv(single_result, 'results.csv')
+
+    all_containers = boxes + pallets
+    multi_result = choose_multiple_containers(items, all_containers, mode='smallest_fit')
+    print('\n=== MULTI CONTAINER RESULT ===')
+    print_result(multi_result)
+    export_multiple_results_to_csv(multi_result, 'results_multi.csv')
 
 
 if __name__ == '__main__':
