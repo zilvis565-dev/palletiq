@@ -74,6 +74,85 @@ def parse_pallets_csv_text(csv_text: str):
     return rows
 
 
+def parse_order_lines_form(form):
+    box_codes = form.getlist('order_box_code[]')
+    qtys = form.getlist('order_qty[]')
+    rows = []
+    for code, qty in zip(box_codes, qtys):
+        code = (code or '').strip()
+        qty = (qty or '').strip()
+        if not code and not qty:
+            continue
+        if not code:
+            raise ValueError('Order eilutėje trūksta box code')
+        if not qty:
+            raise ValueError(f'Order eilutėje {code} trūksta qty')
+        rows.append(OrderLine(box_code=code, qty=int(qty)))
+    return rows
+
+
+def parse_box_master_form(form):
+    codes = form.getlist('box_code[]')
+    lengths = form.getlist('box_length[]')
+    widths = form.getlist('box_width[]')
+    heights = form.getlist('box_height[]')
+    weights = form.getlist('box_weight[]')
+    rotates = form.getlist('box_can_rotate[]')
+    rows = []
+    for code, l, w, h, wt, r in zip(codes, lengths, widths, heights, weights, rotates):
+        code = (code or '').strip()
+        if not code:
+            continue
+        rows.append(BoxType(box_code=code, length=int(l), width=int(w), height=int(h), weight=float(wt), can_rotate=str(r) == '1'))
+    return rows
+
+
+def parse_pallets_form(form):
+    codes = form.getlist('pallet_code[]')
+    types = form.getlist('pallet_type[]')
+    lengths = form.getlist('pallet_length[]')
+    widths = form.getlist('pallet_width[]')
+    heights = form.getlist('pallet_height[]')
+    max_weights = form.getlist('pallet_max_weight[]')
+    tare_weights = form.getlist('pallet_tare_weight[]')
+    costs = form.getlist('pallet_cost[]')
+    actives = form.getlist('pallet_active[]')
+    rows = []
+    for code, t, l, w, h, mw, tw, c, a in zip(codes, types, lengths, widths, heights, max_weights, tare_weights, costs, actives):
+        code = (code or '').strip()
+        if not code:
+            continue
+        rows.append(Container(code=code, type=t or 'PALLET', length=int(l), width=int(w), height=int(h), max_weight=float(mw), tare_weight=float(tw), cost=float(c), active=str(a) == '1'))
+    return rows
+
+
+def to_order_lines_text(rows):
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(ORDER_HEADERS)
+    for r in rows:
+        writer.writerow([r.box_code, r.qty])
+    return out.getvalue().strip()
+
+
+def to_box_master_text(rows):
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(BOX_MASTER_HEADERS)
+    for r in rows:
+        writer.writerow([r.box_code, r.length, r.width, r.height, r.weight, 1 if r.can_rotate else 0])
+    return out.getvalue().strip()
+
+
+def to_pallets_text(rows):
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(PALLET_HEADERS)
+    for r in rows:
+        writer.writerow([r.code, r.type, r.length, r.width, r.height, r.max_weight, r.tare_weight, r.cost, 1 if r.active else 0])
+    return out.getvalue().strip()
+
+
 def load_text_file(path: str) -> str:
     with open(path, encoding='utf-8') as f:
         return f.read()
@@ -147,88 +226,110 @@ def index():
     sample_box_master = box_master_text
     sample_pallets = pallets_text
 
+    order_lines_rows = parse_order_lines_csv_text(order_lines_text)
+    box_master_rows = parse_box_master_csv_text(box_master_text)
+    pallets_rows = parse_pallets_csv_text(pallets_text)
+
     pallet_strategy = 'mixed'
     selected_single_pallet = ''
     selected_pallet_codes = []
-    pallet_options = []
+    pallet_options = serialize_pallet_options(pallets_rows)
     big_boxes_bottom = True
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
+        use_table_input = request.form.get('input_mode', 'table') == 'table'
+
         if action == 'sample':
             order_lines_text = sample_order_lines
             box_master_text = sample_box_master
             pallets_text = sample_pallets
+            order_lines_rows = parse_order_lines_csv_text(order_lines_text)
+            box_master_rows = parse_box_master_csv_text(box_master_text)
+            pallets_rows = parse_pallets_csv_text(pallets_text)
         elif action == 'clear':
             order_lines_text = ''
             box_master_text = ''
             pallets_text = ''
+            order_lines_rows = []
+            box_master_rows = []
+            pallets_rows = []
         else:
-            order_lines_text = request.form.get('order_lines_csv', '').strip()
-            box_master_text = request.form.get('box_master_csv', '').strip()
-            pallets_text = request.form.get('pallets_csv', '').strip()
-            uploaded_order_lines = decode_uploaded_file(request.files.get('order_lines_file'), 'order lines')
-            uploaded_box_master = decode_uploaded_file(request.files.get('box_master_file'), 'box master')
-            uploaded_pallets = decode_uploaded_file(request.files.get('pallets_file'), 'pallets')
-            if uploaded_order_lines:
-                order_lines_text = uploaded_order_lines.strip()
-            if uploaded_box_master:
-                box_master_text = uploaded_box_master.strip()
-            if uploaded_pallets:
-                pallets_text = uploaded_pallets.strip()
+            try:
+                if use_table_input:
+                    order_lines_rows = parse_order_lines_form(request.form)
+                    box_master_rows = parse_box_master_form(request.form)
+                    pallets_rows = parse_pallets_form(request.form)
+                    order_lines_text = to_order_lines_text(order_lines_rows) if order_lines_rows else ''
+                    box_master_text = to_box_master_text(box_master_rows) if box_master_rows else ''
+                    pallets_text = to_pallets_text(pallets_rows) if pallets_rows else ''
+                else:
+                    order_lines_text = request.form.get('order_lines_csv', '').strip()
+                    box_master_text = request.form.get('box_master_csv', '').strip()
+                    pallets_text = request.form.get('pallets_csv', '').strip()
+                    uploaded_order_lines = decode_uploaded_file(request.files.get('order_lines_file'), 'order lines')
+                    uploaded_box_master = decode_uploaded_file(request.files.get('box_master_file'), 'box master')
+                    uploaded_pallets = decode_uploaded_file(request.files.get('pallets_file'), 'pallets')
+                    if uploaded_order_lines:
+                        order_lines_text = uploaded_order_lines.strip()
+                    if uploaded_box_master:
+                        box_master_text = uploaded_box_master.strip()
+                    if uploaded_pallets:
+                        pallets_text = uploaded_pallets.strip()
+                    order_lines_rows = parse_order_lines_csv_text(order_lines_text)
+                    box_master_rows = parse_box_master_csv_text(box_master_text)
+                    pallets_rows = parse_pallets_csv_text(pallets_text)
+            except Exception as e:
+                error_message = str(e)
 
         pallet_strategy = request.form.get('pallet_strategy', 'mixed')
         selected_single_pallet = request.form.get('single_pallet_code', '')
         selected_pallet_codes = request.form.getlist('selected_pallet_codes')
         big_boxes_bottom = request.form.get('big_boxes_bottom') == 'on'
+        pallet_options = serialize_pallet_options(pallets_rows)
 
-        try:
-            order_lines = parse_order_lines_csv_text(order_lines_text)
-            box_master = parse_box_master_csv_text(box_master_text)
-            pallets = parse_pallets_csv_text(pallets_text)
-            pallet_options = serialize_pallet_options(pallets)
-            items = expand_order_lines(order_lines, box_master)
+        if action == 'run' and not error_message:
+            try:
+                items = expand_order_lines(order_lines_rows, box_master_rows)
+                pallets = pallets_rows
 
-            if pallet_strategy == 'single':
-                filtered_pallets = [p for p in pallets if p.code == selected_single_pallet]
-                if not filtered_pallets:
-                    raise ValueError('Pasirink vieną paletę')
-                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
-                if single_result.get('success'):
-                    single_result['selection_policy'] = 'single_pallet'
-                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
-            elif pallet_strategy == 'selected':
-                filtered_pallets = [p for p in pallets if p.code in selected_pallet_codes]
-                if not filtered_pallets:
-                    raise ValueError('Pasirink bent vieną paletę iš sąrašo')
-                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
-                if single_result.get('success'):
-                    single_result['selection_policy'] = 'selected_pallet_pool'
-                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
-            else:
-                single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
-                if single_result.get('success'):
-                    single_result['selection_policy'] = 'best_single_pallet_type'
-                multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                if pallet_strategy == 'single':
+                    filtered_pallets = [p for p in pallets if p.code == selected_single_pallet]
+                    if not filtered_pallets:
+                        raise ValueError('Pasirink vieną paletę')
+                    single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    if single_result.get('success'):
+                        single_result['selection_policy'] = 'single_pallet'
+                    multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                elif pallet_strategy == 'selected':
+                    filtered_pallets = [p for p in pallets if p.code in selected_pallet_codes]
+                    if not filtered_pallets:
+                        raise ValueError('Pasirink bent vieną paletę iš sąrašo')
+                    single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    if single_result.get('success'):
+                        single_result['selection_policy'] = 'selected_pallet_pool'
+                    multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                else:
+                    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
+                    if single_result.get('success'):
+                        single_result['selection_policy'] = 'best_single_pallet_type'
+                    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
 
-            export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
-            export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
-            summary = build_summary(single_result, multi_result)
-            visuals = build_visualization_payload(single_result, multi_result)
-        except Exception as e:
-            error_message = str(e)
-    else:
-        try:
-            pallets = parse_pallets_csv_text(pallets_text)
-            pallet_options = serialize_pallet_options(pallets)
-        except Exception:
-            pallet_options = []
+                export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
+                export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
+                summary = build_summary(single_result, multi_result)
+                visuals = build_visualization_payload(single_result, multi_result)
+            except Exception as e:
+                error_message = str(e)
 
     return render_template(
         'index.html',
         order_lines_text=order_lines_text,
         box_master_text=box_master_text,
         pallets_text=pallets_text,
+        order_lines_rows=order_lines_rows,
+        box_master_rows=box_master_rows,
+        pallets_rows=pallets_rows,
         single_result=single_result,
         multi_result=multi_result,
         error_message=error_message,
