@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, send_file
 import csv
 import io
 import os
+import json
 from packing_engine import (
     OrderLine,
     BoxType,
@@ -103,12 +104,64 @@ def build_summary(single_result, multi_result):
     return summary
 
 
+def build_visualization_payload(single_result, multi_result):
+    visuals = {'single': None, 'multi': []}
+
+    if single_result and single_result.get('success'):
+        visuals['single'] = {
+            'container': {
+                'code': single_result['selected_container'].code,
+                'length': single_result['selected_container'].length,
+                'width': single_result['selected_container'].width,
+                'height': single_result['selected_container'].height,
+            },
+            'placements': [
+                {
+                    'sku': p.sku,
+                    'x': p.x,
+                    'y': p.y,
+                    'z': p.z,
+                    'length': p.length,
+                    'width': p.width,
+                    'height': p.height,
+                }
+                for p in single_result['placements']
+            ],
+        }
+
+    if multi_result and multi_result.get('success'):
+        for shipment in multi_result['shipments']:
+            visuals['multi'].append({
+                'container': {
+                    'code': shipment['container'].code,
+                    'length': shipment['container'].length,
+                    'width': shipment['container'].width,
+                    'height': shipment['container'].height,
+                },
+                'placements': [
+                    {
+                        'sku': p.sku,
+                        'x': p.x,
+                        'y': p.y,
+                        'z': p.z,
+                        'length': p.length,
+                        'width': p.width,
+                        'height': p.height,
+                    }
+                    for p in shipment['placements']
+                ],
+            })
+
+    return visuals
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     single_result = None
     multi_result = None
     error_message = None
     summary = None
+    visuals = {'single': None, 'multi': []}
 
     order_lines_text = load_text_file('order_lines.csv')
     box_master_text = load_text_file('box_master.csv')
@@ -185,6 +238,7 @@ def index():
             export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
             export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
             summary = build_summary(single_result, multi_result)
+            visuals = build_visualization_payload(single_result, multi_result)
         except Exception as e:
             error_message = str(e)
     else:
@@ -207,6 +261,7 @@ def index():
         selected_single_pallet=selected_single_pallet,
         selected_pallet_codes=selected_pallet_codes,
         pallet_options=pallet_options,
+        visuals_json=json.dumps(visuals),
     )
 
 
