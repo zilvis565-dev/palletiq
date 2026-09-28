@@ -17,11 +17,14 @@
     .error { background: #ffe8e8; border: 1px solid #ffb3b3; padding: 12px; border-radius: 8px; }
     .actions { margin-top: 14px; }
     a.btn { display: inline-block; padding: 10px 18px; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; color: #111; margin-right: 10px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .summary-box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
+    input[type="file"] { margin-top: 8px; }
   </style>
 </head>
 <body>
   <h2>PalletIQ testavimo forma</h2>
-  <p class="muted">Gali pildyti prekes, dėžes ir paletes tiesiai per naršyklę.</p>
+  <p class="muted">Gali pildyti prekes, dėžes ir paletes tiesiai per naršyklę arba įkelti CSV failus.</p>
 
   {% if error_message %}
   <div class="error">
@@ -29,27 +32,75 @@
   </div>
   {% endif %}
 
-  <form method="post">
+  {% if summary %}
+  <div class="card">
+    <h3>Rezultatų santrauka</h3>
+    <div class="summary-grid">
+      {% if summary.single_container %}
+      <div class="summary-box">
+        <strong>Single container</strong><br>
+        {{ summary.single_container }}
+      </div>
+      {% endif %}
+      {% if summary.single_utilization %}
+      <div class="summary-box">
+        <strong>Single utilization</strong><br>
+        {{ summary.single_utilization }}
+      </div>
+      {% endif %}
+      {% if summary.shipment_count %}
+      <div class="summary-box">
+        <strong>Shipment count</strong><br>
+        {{ summary.shipment_count }}
+      </div>
+      {% endif %}
+      {% if summary.overall_utilization %}
+      <div class="summary-box">
+        <strong>Overall utilization</strong><br>
+        {{ summary.overall_utilization }}
+      </div>
+      {% endif %}
+      {% if summary.total_cost is not none %}
+      <div class="summary-box">
+        <strong>Total cost</strong><br>
+        {{ summary.total_cost }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
     <div class="grid">
       <div>
         <label for="items_csv"><strong>Prekės (items CSV)</strong></label>
         <textarea name="items_csv" id="items_csv">{{ items_text }}</textarea>
+        <div>
+          <input type="file" name="items_file" accept=".csv">
+        </div>
       </div>
 
       <div>
         <label for="boxes_csv"><strong>Dėžės (boxes CSV)</strong></label>
         <textarea name="boxes_csv" id="boxes_csv">{{ boxes_text }}</textarea>
+        <div>
+          <input type="file" name="boxes_file" accept=".csv">
+        </div>
       </div>
 
       <div>
         <label for="pallets_csv"><strong>Paletės (pallets CSV)</strong></label>
         <textarea name="pallets_csv" id="pallets_csv">{{ pallets_text }}</textarea>
+        <div>
+          <input type="file" name="pallets_file" accept=".csv">
+        </div>
       </div>
     </div>
 
     <div class="actions">
       <button type="submit" name="action" value="run">Paleisti algoritmą</button>
       <button type="submit" name="action" value="sample">Užkrauti pavyzdinius duomenis</button>
+      <button type="submit" name="action" value="clear">Išvalyti formą</button>
     </div>
   </form>
 

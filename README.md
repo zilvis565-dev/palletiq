@@ -38,13 +38,14 @@ http://127.0.0.1:5000
 
 ### Kaip veikia
 
-1. Per naršyklę įklijuoji `items CSV`
-2. Gali redaguoti `boxes CSV`
-3. Gali redaguoti `pallets CSV`
-4. Gali paspausti `Užkrauti pavyzdinius duomenis`
-5. Sistema parodo vieno konteinerio rezultatą
-6. Sistema parodo kelių konteinerių rezultatą
-7. Gali atsisiųsti rezultatus kaip CSV
+1. Gali įklijuoti CSV tekstą arba įkelti CSV failus
+2. Gali redaguoti `items`, `boxes` ir `pallets`
+3. Gali paspausti `Užkrauti pavyzdinius duomenis`
+4. Gali paspausti `Išvalyti formą`
+5. Sistema parodo rezultatų santrauką
+6. Sistema parodo vieno konteinerio rezultatą
+7. Sistema parodo kelių konteinerių rezultatą
+8. Gali atsisiųsti rezultatus kaip CSV
 
 ### CSV struktūra
 
