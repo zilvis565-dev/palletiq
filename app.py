@@ -19,7 +19,6 @@ app = Flask(__name__)
 
 LAST_SINGLE_RESULT_PATH = 'results.csv'
 LAST_MULTI_RESULT_PATH = 'results_multi.csv'
-
 ORDER_HEADERS = ['box_code', 'qty']
 BOX_MASTER_HEADERS = ['box_code', 'length', 'width', 'height', 'weight', 'can_rotate']
 PALLET_HEADERS = ['code', 'type', 'length', 'width', 'height', 'max_weight', 'tare_weight', 'cost', 'active']
@@ -112,59 +111,24 @@ def build_counts(placements):
 
 def build_visualization_payload(single_result, multi_result):
     visuals = {'single': None, 'multi': []}
-
     if single_result and single_result.get('success'):
         visuals['single'] = {
-            'container': {
-                'code': single_result['selected_container'].code,
-                'length': single_result['selected_container'].length,
-                'width': single_result['selected_container'].width,
-                'height': single_result['selected_container'].height,
-            },
+            'container': {'code': single_result['selected_container'].code, 'length': single_result['selected_container'].length, 'width': single_result['selected_container'].width, 'height': single_result['selected_container'].height},
             'utilization': round(single_result['utilization'] * 100, 2),
             'total_weight': single_result['total_weight'],
             'counts': build_counts(single_result['placements']),
-            'placements': [
-                {
-                    'sku': p.sku,
-                    'x': p.x,
-                    'y': p.y,
-                    'z': p.z,
-                    'length': p.length,
-                    'width': p.width,
-                    'height': p.height,
-                }
-                for p in single_result['placements']
-            ],
+            'placements': [{'sku': p.sku, 'x': p.x, 'y': p.y, 'z': p.z, 'length': p.length, 'width': p.width, 'height': p.height} for p in single_result['placements']],
         }
-
     if multi_result and multi_result.get('success'):
         for idx, shipment in enumerate(multi_result['shipments'], start=1):
             visuals['multi'].append({
                 'index': idx,
-                'container': {
-                    'code': shipment['container'].code,
-                    'length': shipment['container'].length,
-                    'width': shipment['container'].width,
-                    'height': shipment['container'].height,
-                },
+                'container': {'code': shipment['container'].code, 'length': shipment['container'].length, 'width': shipment['container'].width, 'height': shipment['container'].height},
                 'utilization': round(shipment['utilization'] * 100, 2),
                 'total_weight': shipment['total_weight'],
                 'counts': build_counts(shipment['placements']),
-                'placements': [
-                    {
-                        'sku': p.sku,
-                        'x': p.x,
-                        'y': p.y,
-                        'z': p.z,
-                        'length': p.length,
-                        'width': p.width,
-                        'height': p.height,
-                    }
-                    for p in shipment['placements']
-                ],
+                'placements': [{'sku': p.sku, 'x': p.x, 'y': p.y, 'z': p.z, 'length': p.length, 'width': p.width, 'height': p.height} for p in shipment['placements']],
             })
-
     return visuals
 
 
@@ -179,7 +143,6 @@ def index():
     order_lines_text = load_text_file('order_lines.csv')
     box_master_text = load_text_file('box_master.csv')
     pallets_text = load_text_file('pallets.csv')
-
     sample_order_lines = order_lines_text
     sample_box_master = box_master_text
     sample_pallets = pallets_text
@@ -188,6 +151,7 @@ def index():
     selected_single_pallet = ''
     selected_pallet_codes = []
     pallet_options = []
+    big_boxes_bottom = True
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -203,11 +167,9 @@ def index():
             order_lines_text = request.form.get('order_lines_csv', '').strip()
             box_master_text = request.form.get('box_master_csv', '').strip()
             pallets_text = request.form.get('pallets_csv', '').strip()
-
             uploaded_order_lines = decode_uploaded_file(request.files.get('order_lines_file'), 'order lines')
             uploaded_box_master = decode_uploaded_file(request.files.get('box_master_file'), 'box master')
             uploaded_pallets = decode_uploaded_file(request.files.get('pallets_file'), 'pallets')
-
             if uploaded_order_lines:
                 order_lines_text = uploaded_order_lines.strip()
             if uploaded_box_master:
@@ -218,6 +180,7 @@ def index():
         pallet_strategy = request.form.get('pallet_strategy', 'mixed')
         selected_single_pallet = request.form.get('single_pallet_code', '')
         selected_pallet_codes = request.form.getlist('selected_pallet_codes')
+        big_boxes_bottom = request.form.get('big_boxes_bottom') == 'on'
 
         try:
             order_lines = parse_order_lines_csv_text(order_lines_text)
@@ -230,23 +193,23 @@ def index():
                 filtered_pallets = [p for p in pallets if p.code == selected_single_pallet]
                 if not filtered_pallets:
                     raise ValueError('Pasirink vieną paletę')
-                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit')
+                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
                 if single_result.get('success'):
                     single_result['selection_policy'] = 'single_pallet'
-                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit')
+                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
             elif pallet_strategy == 'selected':
                 filtered_pallets = [p for p in pallets if p.code in selected_pallet_codes]
                 if not filtered_pallets:
                     raise ValueError('Pasirink bent vieną paletę iš sąrašo')
-                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit')
+                single_result = choose_best_container(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
                 if single_result.get('success'):
                     single_result['selection_policy'] = 'selected_pallet_pool'
-                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit')
+                multi_result = choose_multiple_containers(items, filtered_pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
             else:
-                single_result = choose_best_container(items, pallets, mode='smallest_fit')
+                single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
                 if single_result.get('success'):
                     single_result['selection_policy'] = 'best_single_pallet_type'
-                multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit')
+                multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=big_boxes_bottom)
 
             export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
             export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
@@ -275,6 +238,7 @@ def index():
         selected_pallet_codes=selected_pallet_codes,
         pallet_options=pallet_options,
         visuals_json=json.dumps(visuals),
+        big_boxes_bottom=big_boxes_bottom,
     )
 
 
