@@ -3,6 +3,7 @@ import csv
 import io
 import os
 import json
+from collections import Counter
 from packing_engine import (
     OrderLine,
     BoxType,
@@ -104,6 +105,11 @@ def build_summary(single_result, multi_result):
     return summary
 
 
+def build_counts(placements):
+    counts = Counter([p.sku for p in placements])
+    return [{'sku': sku, 'qty': qty} for sku, qty in sorted(counts.items())]
+
+
 def build_visualization_payload(single_result, multi_result):
     visuals = {'single': None, 'multi': []}
 
@@ -115,6 +121,9 @@ def build_visualization_payload(single_result, multi_result):
                 'width': single_result['selected_container'].width,
                 'height': single_result['selected_container'].height,
             },
+            'utilization': round(single_result['utilization'] * 100, 2),
+            'total_weight': single_result['total_weight'],
+            'counts': build_counts(single_result['placements']),
             'placements': [
                 {
                     'sku': p.sku,
@@ -130,14 +139,18 @@ def build_visualization_payload(single_result, multi_result):
         }
 
     if multi_result and multi_result.get('success'):
-        for shipment in multi_result['shipments']:
+        for idx, shipment in enumerate(multi_result['shipments'], start=1):
             visuals['multi'].append({
+                'index': idx,
                 'container': {
                     'code': shipment['container'].code,
                     'length': shipment['container'].length,
                     'width': shipment['container'].width,
                     'height': shipment['container'].height,
                 },
+                'utilization': round(shipment['utilization'] * 100, 2),
+                'total_weight': shipment['total_weight'],
+                'counts': build_counts(shipment['placements']),
                 'placements': [
                     {
                         'sku': p.sku,

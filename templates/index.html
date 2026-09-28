@@ -13,29 +13,18 @@
       --line: #d9e2f1;
       --primary: #2563eb;
       --primary-soft: #e8f0ff;
-      --success: #0f9d58;
       --danger-bg: #fff1f2;
       --danger-line: #fecdd3;
       --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
       --radius: 14px;
     }
-
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, Arial, sans-serif;
-      background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
-      color: var(--text);
-    }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%); color: var(--text); }
     .wrap { max-width: 1440px; margin: 0 auto; padding: 28px; }
-    .hero {
-      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%);
-      color: white; border-radius: 20px; padding: 28px; box-shadow: var(--shadow); margin-bottom: 24px;
-    }
+    .hero { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 45%, #3b82f6 100%); color: white; border-radius: 20px; padding: 28px; box-shadow: var(--shadow); margin-bottom: 24px; }
     .hero h1 { margin: 0 0 8px 0; font-size: 32px; }
     .hero p { margin: 0; opacity: 0.94; max-width: 840px; line-height: 1.5; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); margin-top: 20px; }
-    .card h3 { margin-top: 0; margin-bottom: 14px; }
     .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .selection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
@@ -55,11 +44,20 @@
     th { background: #f8fbff; }
     .section-note { display: inline-block; background: var(--primary-soft); color: var(--primary); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
     .viz-wrap { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    .viz-box { background: #fbfdff; border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
-    .viz-title { font-weight: 700; margin-bottom: 10px; }
+    .viz-box { background: #fbfdff; border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .viz-title { font-weight: 700; margin-bottom: 8px; font-size: 18px; }
     .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .legend-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; }
     .legend-color { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.08); }
+    .viz-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .viz-stat { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .viz-stat .k { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .viz-stat .v { font-size: 18px; font-weight: 700; }
+    .count-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .count-chip { background: white; border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 13px; }
+    .view-switch { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .view-btn { background: white; color: var(--text); border: 1px solid var(--line); }
+    .view-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
     svg { width: 100%; height: auto; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border-radius: 12px; }
     @media (max-width: 1100px) { .grid, .selection-grid { grid-template-columns: 1fr; } }
   </style>
@@ -71,9 +69,7 @@
       <p>Užsakymo dėžių paletavimo skaičiuoklė. Įvesk užsakymo eilutes, dėžių master duomenis ir galimų palečių sąrašą. Sistema parinks vieną geriausią paletę arba sudarys mišrų kelių palečių planą.</p>
     </div>
 
-    {% if error_message %}
-    <div class="error"><strong>Klaida:</strong> {{ error_message }}</div>
-    {% endif %}
+    {% if error_message %}<div class="error"><strong>Klaida:</strong> {{ error_message }}</div>{% endif %}
 
     {% if summary %}
     <div class="card">
@@ -156,6 +152,10 @@
 
     <div class="card">
       <div class="section-note">Vizualizacija</div>
+      <div class="view-switch">
+        <button type="button" class="view-btn active" data-view="iso">Izometrinis vaizdas</button>
+        <button type="button" class="view-btn" data-view="top">Vaizdas iš viršaus</button>
+      </div>
       <div class="viz-wrap">
         <div class="viz-box">
           <div class="viz-title">Vienos paletės vaizdas</div>
@@ -180,10 +180,7 @@
         <p><strong>Bendras tūris:</strong> {{ single_result.total_volume }}</p>
         <p><strong>Bendras svoris:</strong> {{ single_result.total_weight }}</p>
         <p><a class="btn" href="/download/single">Atsisiųsti single CSV</a></p>
-        <table>
-          <thead><tr><th>Dėžė</th><th>X</th><th>Y</th><th>Z</th><th>Ilgis</th><th>Plotis</th><th>Aukštis</th></tr></thead>
-          <tbody>{% for p in single_result.placements %}<tr><td>{{ p.sku }}</td><td>{{ p.x }}</td><td>{{ p.y }}</td><td>{{ p.z }}</td><td>{{ p.length }}</td><td>{{ p.width }}</td><td>{{ p.height }}</td></tr>{% endfor %}</tbody>
-        </table>
+        <table><thead><tr><th>Dėžė</th><th>X</th><th>Y</th><th>Z</th><th>Ilgis</th><th>Plotis</th><th>Aukštis</th></tr></thead><tbody>{% for p in single_result.placements %}<tr><td>{{ p.sku }}</td><td>{{ p.x }}</td><td>{{ p.y }}</td><td>{{ p.z }}</td><td>{{ p.length }}</td><td>{{ p.width }}</td><td>{{ p.height }}</td></tr>{% endfor %}</tbody></table>
       {% else %}<p>{{ single_result.reason }}</p>{% endif %}
     </div>
     {% endif %}
@@ -201,10 +198,7 @@
         <div class="card">
           <p><strong>Paletė:</strong> {{ shipment.container.code }} ({{ shipment.container.type }})</p>
           <p><strong>Užpildymas:</strong> {{ '%.2f'|format(shipment.utilization * 100) }}%</p>
-          <table>
-            <thead><tr><th>Dėžė</th><th>X</th><th>Y</th><th>Z</th><th>Ilgis</th><th>Plotis</th><th>Aukštis</th></tr></thead>
-            <tbody>{% for p in shipment.placements %}<tr><td>{{ p.sku }}</td><td>{{ p.x }}</td><td>{{ p.y }}</td><td>{{ p.z }}</td><td>{{ p.length }}</td><td>{{ p.width }}</td><td>{{ p.height }}</td></tr>{% endfor %}</tbody>
-          </table>
+          <table><thead><tr><th>Dėžė</th><th>X</th><th>Y</th><th>Z</th><th>Ilgis</th><th>Plotis</th><th>Aukštis</th></tr></thead><tbody>{% for p in shipment.placements %}<tr><td>{{ p.sku }}</td><td>{{ p.x }}</td><td>{{ p.y }}</td><td>{{ p.z }}</td><td>{{ p.length }}</td><td>{{ p.width }}</td><td>{{ p.height }}</td></tr>{% endfor %}</tbody></table>
         </div>
         {% endfor %}
       {% else %}<p>{{ multi_result.reason }}</p>{% endif %}
@@ -214,10 +208,8 @@
 
   <script>
     const visuals = {{ visuals_json|safe }};
-
-    const palette = [
-      '#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#0f766e'
-    ];
+    let currentView = 'iso';
+    const palette = ['#2563eb', '#16a34a', '#ea580c', '#7c3aed', '#dc2626', '#0891b2', '#ca8a04', '#db2777', '#4f46e5', '#0f766e'];
 
     function colorForSku(sku, map) {
       if (!map[sku]) {
@@ -233,19 +225,11 @@
       const r = (num >> 16) + amt;
       const g = (num >> 8 & 0x00FF) + amt;
       const b = (num & 0x0000FF) + amt;
-      return '#' + (
-        0x1000000 +
-        (r < 255 ? (r < 0 ? 0 : r) : 255) * 0x10000 +
-        (g < 255 ? (g < 0 ? 0 : g) : 255) * 0x100 +
-        (b < 255 ? (b < 0 ? 0 : b) : 255)
-      ).toString(16).slice(1);
+      return '#' + (0x1000000 + (r < 255 ? (r < 0 ? 0 : r) : 255) * 0x10000 + (g < 255 ? (g < 0 ? 0 : g) : 255) * 0x100 + (b < 255 ? (b < 0 ? 0 : b) : 255)).toString(16).slice(1);
     }
 
     function iso(x, y, z, scale, originX, originY) {
-      return {
-        x: originX + (x - y) * scale,
-        y: originY + (x + y) * scale * 0.5 - z * scale * 0.8
-      };
+      return { x: originX + (x - y) * scale, y: originY + (x + y) * scale * 0.5 - z * scale * 0.8 };
     }
 
     function boxPolygons(p, scale, originX, originY) {
@@ -258,15 +242,69 @@
       const f = iso(x + l, y, z + h, scale, originX, originY);
       const g = iso(x + l, y + w, z + h, scale, originX, originY);
       const h1 = iso(x, y + w, z + h, scale, originX, originY);
-      return {
-        top: [e, f, g, h1],
-        left: [e, h1, d, a],
-        right: [f, g, c, b]
-      };
+      return { top: [e, f, g, h1], left: [e, h1, d, a], right: [f, g, c, b] };
     }
 
-    function pointsToString(points) {
-      return points.map(p => `${p.x},${p.y}`).join(' ');
+    function pointsToString(points) { return points.map(p => `${p.x},${p.y}`).join(' '); }
+
+    function renderBlock(block, colorMap) {
+      const container = block.container;
+      const placements = [...block.placements].sort((a, b) => (a.z + a.y + a.x) - (b.z + b.y + b.x));
+      let html = '';
+
+      html += `<div class="viz-meta">
+        <div class="viz-stat"><div class="k">Paletė</div><div class="v">${container.code}</div></div>
+        <div class="viz-stat"><div class="k">Matmenys</div><div class="v">${container.length}×${container.width}×${container.height}</div></div>
+        <div class="viz-stat"><div class="k">Užpildymas</div><div class="v">${block.utilization}%</div></div>
+        <div class="viz-stat"><div class="k">Svoris</div><div class="v">${block.total_weight}</div></div>
+      </div>`;
+
+      if (currentView === 'iso') {
+        const scale = Math.max(0.12, Math.min(0.22, 700 / Math.max(container.length, container.width + container.length)));
+        const originX = 240, originY = 260;
+        const baseA = iso(0, 0, 0, scale, originX, originY);
+        const baseB = iso(container.length, 0, 0, scale, originX, originY);
+        const baseC = iso(container.length, container.width, 0, scale, originX, originY);
+        const baseD = iso(0, container.width, 0, scale, originX, originY);
+
+        html += '<svg viewBox="0 0 820 460" preserveAspectRatio="xMidYMid meet">';
+        html += `<polygon points="${pointsToString([baseA, baseB, baseC, baseD])}" fill="#e7edf7" stroke="#b8c7dd" stroke-width="1.2"></polygon>`;
+        placements.forEach(p => {
+          const color = colorForSku(p.sku, colorMap);
+          const polys = boxPolygons(p, scale, originX, originY);
+          html += `<polygon points="${pointsToString(polys.left)}" fill="${shadeColor(color, -18)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
+          html += `<polygon points="${pointsToString(polys.right)}" fill="${shadeColor(color, -8)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
+          html += `<polygon points="${pointsToString(polys.top)}" fill="${shadeColor(color, 10)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
+        });
+        html += '</svg>';
+      } else {
+        const svgW = 820, svgH = 420;
+        const pad = 30;
+        const scale = Math.min((svgW - pad * 2) / container.length, (svgH - pad * 2) / container.width);
+        html += `<svg viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">`;
+        html += `<rect x="${pad}" y="${pad}" width="${container.length * scale}" height="${container.width * scale}" fill="#eef4fb" stroke="#b8c7dd" stroke-width="2"></rect>`;
+        placements.forEach(p => {
+          const color = colorForSku(p.sku, colorMap);
+          const x = pad + p.x * scale;
+          const y = pad + p.y * scale;
+          const w = p.length * scale;
+          const h = p.width * scale;
+          html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="0.88" stroke="#1f2937" stroke-width="0.8"></rect>`;
+          html += `<text x="${x + 4}" y="${y + 14}" font-size="11" fill="#fff">${p.sku}</text>`;
+        });
+        html += '</svg>';
+      }
+
+      if (block.counts && block.counts.length) {
+        html += '<div class="count-chips">';
+        block.counts.forEach(c => {
+          const color = colorForSku(c.sku, colorMap);
+          html += `<div class="count-chip"><span class="legend-color" style="background:${color}; margin-right:8px;"></span>${c.sku}: ${c.qty} vnt</div>`;
+        });
+        html += '</div>';
+      }
+
+      return html;
     }
 
     function renderVisualization(targetId, blocks) {
@@ -279,34 +317,10 @@
 
       const colorMap = window.__skuColorMap || (window.__skuColorMap = {});
       let html = '';
-
       blocks.forEach((block, idx) => {
-        const container = block.container;
-        const placements = [...block.placements].sort((a, b) => (a.z + a.y + a.x) - (b.z + b.y + b.x));
-        const scale = Math.max(0.12, Math.min(0.22, 700 / Math.max(container.length, container.width + container.length)));
-        const originX = 240;
-        const originY = 260;
-
-        const baseA = iso(0, 0, 0, scale, originX, originY);
-        const baseB = iso(container.length, 0, 0, scale, originX, originY);
-        const baseC = iso(container.length, container.width, 0, scale, originX, originY);
-        const baseD = iso(0, container.width, 0, scale, originX, originY);
-
-        html += `<div class="viz-title">${container.code}${blocks.length > 1 ? ' #' + (idx + 1) : ''}</div>`;
-        html += '<svg viewBox="0 0 820 460" preserveAspectRatio="xMidYMid meet">';
-        html += `<polygon points="${pointsToString([baseA, baseB, baseC, baseD])}" fill="#e7edf7" stroke="#b8c7dd" stroke-width="1.2"></polygon>`;
-
-        placements.forEach(p => {
-          const color = colorForSku(p.sku, colorMap);
-          const polys = boxPolygons(p, scale, originX, originY);
-          html += `<polygon points="${pointsToString(polys.left)}" fill="${shadeColor(color, -18)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.right)}" fill="${shadeColor(color, -8)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.top)}" fill="${shadeColor(color, 10)}" stroke="#1f2937" stroke-width="0.6"></polygon>`;
-        });
-
-        html += '</svg>';
+        html += `<div class="viz-title">${block.container.code}${blocks.length > 1 ? ' #' + (idx + 1) : ''}</div>`;
+        html += renderBlock(block, colorMap);
       });
-
       el.innerHTML = html;
       renderLegend(colorMap);
     }
@@ -315,23 +329,26 @@
       const legend = document.getElementById('legend');
       if (!legend) return;
       const items = Object.entries(colorMap);
-      if (!items.length) {
-        legend.innerHTML = '';
-        return;
-      }
-      legend.innerHTML = items.map(([sku, color]) => `
-        <div class="legend-item">
-          <span class="legend-color" style="background:${color}"></span>
-          <span>${sku}</span>
-        </div>
-      `).join('');
+      legend.innerHTML = items.map(([sku, color]) => `<div class="legend-item"><span class="legend-color" style="background:${color}"></span><span>${sku}</span></div>`).join('');
     }
 
-    const singleBlocks = visuals.single ? [visuals.single] : [];
-    const multiBlocks = visuals.multi || [];
+    function rerenderAll() {
+      const singleBlocks = visuals.single ? [visuals.single] : [];
+      const multiBlocks = visuals.multi || [];
+      renderVisualization('single-visualization', singleBlocks);
+      renderVisualization('multi-visualization', multiBlocks);
+    }
 
-    renderVisualization('single-visualization', singleBlocks);
-    renderVisualization('multi-visualization', multiBlocks);
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        rerenderAll();
+      });
+    });
+
+    rerenderAll();
   </script>
 </body>
 </html>
