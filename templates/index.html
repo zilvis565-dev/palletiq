@@ -54,7 +54,7 @@
     .view-btn { background: white; color: var(--text); border: 1px solid var(--line); }
     .view-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
     .viz-canvas { width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; }
-    svg { width: 100%; height: auto; min-width: 980px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border-radius: 12px; display: block; }
+    svg { width: 100%; height: auto; min-width: 1200px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border-radius: 12px; display: block; }
     @media (max-width: 1100px) { .grid, .selection-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -263,22 +263,40 @@
       </div>`;
 
       if (currentView === 'iso') {
-        const scale = Math.max(0.14, Math.min(0.26, 900 / Math.max(container.length + container.width, container.height * 1.6)));
-        const originX = 340;
-        const originY = Math.max(300, 180 + container.height * scale * 0.55);
-        const baseA = iso(0, 0, 0, scale, originX, originY);
-        const baseB = iso(container.length, 0, 0, scale, originX, originY);
-        const baseC = iso(container.length, container.width, 0, scale, originX, originY);
-        const baseD = iso(0, container.width, 0, scale, originX, originY);
+        const dimSum = container.length + container.width + container.height;
+        const scale = Math.max(0.12, Math.min(0.22, 680 / Math.max(dimSum, 1)));
+        const isoA = iso(0, 0, 0, scale, 0, 0);
+        const isoB = iso(container.length, 0, 0, scale, 0, 0);
+        const isoC = iso(container.length, container.width, 0, scale, 0, 0);
+        const isoD = iso(0, container.width, 0, scale, 0, 0);
+        const isoTop = iso(container.length, container.width, container.height, scale, 0, 0);
+
+        const allPts = [isoA, isoB, isoC, isoD, isoTop];
+        placements.forEach(p => {
+          const polys = boxPolygons(p, scale, 0, 0);
+          allPts.push(...polys.top, ...polys.left, ...polys.right);
+        });
+
+        const xs = allPts.map(p => p.x);
+        const ys = allPts.map(p => p.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        const pad = 80;
+        const shiftX = pad - minX;
+        const shiftY = pad - minY;
+        const viewW = Math.ceil((maxX - minX) + pad * 2);
+        const viewH = Math.ceil((maxY - minY) + pad * 2);
+
+        const move = pt => ({ x: pt.x + shiftX, y: pt.y + shiftY });
         html += '<div class="viz-canvas">';
-        html += '<svg viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid meet">';
-        html += `<polygon points="${pointsToString([baseA, baseB, baseC, baseD])}" fill="#e7edf7" stroke="#b8c7dd" stroke-width="1.2"></polygon>`;
+        html += `<svg viewBox="0 0 ${viewW} ${viewH}" preserveAspectRatio="xMinYMin meet">`;
+        html += `<polygon points="${pointsToString([move(isoA), move(isoB), move(isoC), move(isoD)])}" fill="#e7edf7" stroke="#b8c7dd" stroke-width="1.2"></polygon>`;
         placements.forEach(p => {
           const color = colorForSku(p.sku, colorMap);
-          const polys = boxPolygons(p, scale, originX, originY);
-          html += `<polygon points="${pointsToString(polys.left)}" fill="${shadeColor(color, -18)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.right)}" fill="${shadeColor(color, -8)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
-          html += `<polygon points="${pointsToString(polys.top)}" fill="${shadeColor(color, 10)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
+          const polys = boxPolygons(p, scale, 0, 0);
+          html += `<polygon points="${pointsToString(polys.left.map(move))}" fill="${shadeColor(color, -18)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
+          html += `<polygon points="${pointsToString(polys.right.map(move))}" fill="${shadeColor(color, -8)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
+          html += `<polygon points="${pointsToString(polys.top.map(move))}" fill="${shadeColor(color, 10)}" stroke="#1f2937" stroke-width="0.7"></polygon>`;
         });
         html += '</svg></div>';
       } else {
