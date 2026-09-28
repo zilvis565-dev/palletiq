@@ -12,8 +12,6 @@ Bazinis pakavimo algoritmo projektas, skirtas parinkti tinkamiausią dėžę arb
 - `items_sample.csv` — pavyzdinės prekės testavimui
 - `requirements.txt` — Python paketai Render paleidimui
 - `render.yaml` — Render konfigūracija
-- `results.csv` — vieno konteinerio rezultato eksportas po paleidimo
-- `results_multi.csv` — kelių konteinerių rezultato eksportas po paleidimo
 
 ### Paleidimas lokaliai
 
@@ -40,15 +38,15 @@ http://127.0.0.1:5000
 
 ### Kaip veikia
 
-1. Įklijuoji `items CSV` į formą
-2. Sistema nuskaito `boxes.csv`
-3. Sistema nuskaito `pallets.csv`
-4. Parodo vieno konteinerio rezultatą
-5. Parodo kelių konteinerių rezultatą
+1. Per naršyklę įklijuoji `items CSV`
+2. Gali redaguoti `boxes CSV`
+3. Gali redaguoti `pallets CSV`
+4. Sistema parodo vieno konteinerio rezultatą
+5. Sistema parodo kelių konteinerių rezultatą
 
 ### CSV struktūra
 
-#### items_sample.csv
+#### items CSV
 - `sku`
 - `length`
 - `width`
@@ -57,7 +55,7 @@ http://127.0.0.1:5000
 - `qty`
 - `can_rotate`
 
-#### boxes.csv ir pallets.csv
+#### boxes ir pallets CSV
 - `code`
 - `type`
 - `length`
