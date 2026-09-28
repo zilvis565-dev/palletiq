@@ -20,6 +20,8 @@
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
     .summary-box { border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: #fafafa; }
     input[type="file"] { margin-top: 8px; }
+    select { padding: 8px; width: 100%; margin-top: 8px; }
+    .selection-block { display: grid; grid-template-columns: 1fr; gap: 16px; }
   </style>
 </head>
 <body>
@@ -71,6 +73,39 @@
   {% endif %}
 
   <form method="post" enctype="multipart/form-data">
+    <div class="card">
+      <h3>Container selection</h3>
+      <div class="selection-block">
+        <div>
+          <label for="selection_mode"><strong>Selection mode</strong></label>
+          <select name="selection_mode" id="selection_mode">
+            <option value="all" {% if selection_mode == 'all' %}selected{% endif %}>Use all active containers</option>
+            <option value="single" {% if selection_mode == 'single' %}selected{% endif %}>Choose one specific container</option>
+            <option value="selected" {% if selection_mode == 'selected' %}selected{% endif %}>Choose selected containers</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="single_container_code"><strong>Single container</strong></label>
+          <select name="single_container_code" id="single_container_code">
+            <option value="">-- Pasirink konteinerį --</option>
+            {% for option in container_options %}
+              <option value="{{ option.code }}" {% if selected_single_container == option.code %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="selected_container_codes"><strong>Selected containers</strong></label>
+          <select name="selected_container_codes" id="selected_container_codes" multiple size="8">
+            {% for option in container_options %}
+              <option value="{{ option.code }}" {% if option.code in selected_container_codes %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
     <div class="grid">
       <div>
         <label for="items_csv"><strong>Prekės (items CSV)</strong></label>

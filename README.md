@@ -40,12 +40,12 @@ http://127.0.0.1:5000
 
 1. Gali įklijuoti CSV tekstą arba įkelti CSV failus
 2. Gali redaguoti `items`, `boxes` ir `pallets`
-3. Gali paspausti `Užkrauti pavyzdinius duomenis`
-4. Gali paspausti `Išvalyti formą`
-5. Sistema parodo rezultatų santrauką
-6. Sistema parodo vieno konteinerio rezultatą
-7. Sistema parodo kelių konteinerių rezultatą
-8. Gali atsisiųsti rezultatus kaip CSV
+3. Gali pasirinkti režimą:
+   - naudoti visus aktyvius konteinerius
+   - pasirinkti vieną konkretų konteinerį
+   - pasirinkti kelis konkrečius konteinerius
+4. Sistema išdėlioja prekes pagal tavo pasirinktus konteinerius
+5. Gali atsisiųsti rezultatus kaip CSV
 
 ### CSV struktūra
 

@@ -7,6 +7,7 @@ from packing_engine import (
     Container,
     choose_box_then_pallet,
     choose_multiple_containers,
+    choose_best_container,
     export_single_result_to_csv,
     export_multiple_results_to_csv,
 )
@@ -15,7 +16,6 @@ app = Flask(__name__)
 
 LAST_SINGLE_RESULT_PATH = 'results.csv'
 LAST_MULTI_RESULT_PATH = 'results_multi.csv'
-
 
 ITEM_HEADERS = ['sku', 'length', 'width', 'height', 'weight', 'qty', 'can_rotate']
 CONTAINER_HEADERS = ['code', 'type', 'length', 'width', 'height', 'max_weight', 'tare_weight', 'cost', 'active']
@@ -110,6 +110,31 @@ def build_summary(single_result, multi_result):
     return summary
 
 
+def serialize_container_options(containers):
+    return [
+        {
+            'code': c.code,
+            'type': c.type,
+            'label': f"{c.code} ({c.type}) {c.length}x{c.width}x{c.height}",
+        }
+        for c in containers
+    ]
+
+
+def filter_containers(selection_mode, single_code, selected_codes, boxes, pallets):
+    all_containers = boxes + pallets
+
+    if selection_mode == 'single':
+        filtered = [c for c in all_containers if c.code == single_code]
+        return filtered
+
+    if selection_mode == 'selected':
+        filtered = [c for c in all_containers if c.code in selected_codes]
+        return filtered
+
+    return [c for c in all_containers if c.active]
+
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     single_result = None
@@ -124,6 +149,11 @@ def index():
     items_text = sample_items
     boxes_text = sample_boxes
     pallets_text = sample_pallets
+
+    selection_mode = 'all'
+    selected_single_container = ''
+    selected_container_codes = []
+    container_options = []
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -152,19 +182,54 @@ def index():
             if uploaded_pallets:
                 pallets_text = uploaded_pallets.strip()
 
-            try:
-                items = parse_items_csv_text(items_text)
-                boxes = parse_containers_csv_text(boxes_text, 'Boxes CSV')
-                pallets = parse_containers_csv_text(pallets_text, 'Pallets CSV')
+        selection_mode = request.form.get('selection_mode', 'all')
+        selected_single_container = request.form.get('single_container_code', '')
+        selected_container_codes = request.form.getlist('selected_container_codes')
 
-                single_result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
-                multi_result = choose_multiple_containers(items, boxes + pallets, mode='smallest_fit')
+        try:
+            boxes = parse_containers_csv_text(boxes_text, 'Boxes CSV')
+            pallets = parse_containers_csv_text(pallets_text, 'Pallets CSV')
+            container_options = serialize_container_options(boxes + pallets)
+
+            if action == 'run':
+                items = parse_items_csv_text(items_text)
+                filtered_containers = filter_containers(
+                    selection_mode,
+                    selected_single_container,
+                    selected_container_codes,
+                    boxes,
+                    pallets,
+                )
+
+                if not filtered_containers:
+                    raise ValueError('Nepasirinktas nei vienas konteineris')
+
+                if selection_mode == 'single':
+                    single_result = choose_best_container(items, filtered_containers, mode='smallest_fit')
+                    if single_result.get('success'):
+                        single_result['selection_policy'] = 'single_selected_container'
+                    multi_result = choose_multiple_containers(items, filtered_containers, mode='smallest_fit')
+                elif selection_mode == 'selected':
+                    single_result = choose_best_container(items, filtered_containers, mode='smallest_fit')
+                    if single_result.get('success'):
+                        single_result['selection_policy'] = 'selected_container_pool'
+                    multi_result = choose_multiple_containers(items, filtered_containers, mode='smallest_fit')
+                else:
+                    single_result = choose_box_then_pallet(items, boxes, pallets, mode='smallest_fit')
+                    multi_result = choose_multiple_containers(items, filtered_containers, mode='smallest_fit')
 
                 export_single_result_to_csv(single_result, LAST_SINGLE_RESULT_PATH)
                 export_multiple_results_to_csv(multi_result, LAST_MULTI_RESULT_PATH)
                 summary = build_summary(single_result, multi_result)
-            except Exception as e:
-                error_message = str(e)
+        except Exception as e:
+            error_message = str(e)
+    else:
+        try:
+            boxes = parse_containers_csv_text(boxes_text, 'Boxes CSV')
+            pallets = parse_containers_csv_text(pallets_text, 'Pallets CSV')
+            container_options = serialize_container_options(boxes + pallets)
+        except Exception:
+            container_options = []
 
     return render_template(
         'index.html',
@@ -175,6 +240,10 @@ def index():
         multi_result=multi_result,
         error_message=error_message,
         summary=summary,
+        selection_mode=selection_mode,
+        selected_single_container=selected_single_container,
+        selected_container_codes=selected_container_codes,
+        container_options=container_options,
     )
 
 
