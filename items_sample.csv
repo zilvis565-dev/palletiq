@@ -1,0 +1,4 @@
+sku,length,width,height,weight,qty,can_rotate
+A001,200,150,100,2.5,2,1
+B002,250,200,120,3.0,1,1
+C003,300,200,150,4.0,1,0
