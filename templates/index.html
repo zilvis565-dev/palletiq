@@ -55,6 +55,15 @@
     .view-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
     .viz-canvas { width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; }
     svg { width: 100%; height: auto; min-width: 1200px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border-radius: 12px; display: block; }
+    .viz-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.72); display: none; align-items: center; justify-content: center; padding: 24px; z-index: 9999; }
+    .modal.open { display: flex; }
+    .modal-card { width: min(96vw, 1700px); height: min(94vh, 980px); background: white; border-radius: 18px; box-shadow: 0 30px 80px rgba(0,0,0,0.28); padding: 18px; display: flex; flex-direction: column; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .modal-title { font-size: 20px; font-weight: 700; }
+    .modal-body { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: #f8fbff; }
+    .modal-close { background: white; color: var(--text); border: 1px solid var(--line); }
+    .modal-body svg { min-width: 1600px; }
     @media (max-width: 1100px) { .grid, .selection-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -160,6 +169,10 @@
         <button type="button" class="view-btn active" data-view="iso">Izometrinis vaizdas</button>
         <button type="button" class="view-btn" data-view="top">Vaizdas iš viršaus</button>
       </div>
+      <div class="viz-actions">
+        <button type="button" class="secondary" id="open-single-large">Atidaryti didelį vienos paletės vaizdą</button>
+        <button type="button" class="secondary" id="open-multi-large">Atidaryti didelį kelių palečių vaizdą</button>
+      </div>
       <div class="viz-wrap">
         <div class="viz-box">
           <div class="viz-title">Vienos paletės vaizdas</div>
@@ -210,6 +223,16 @@
     {% endif %}
   </div>
 
+  <div class="modal" id="viz-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div class="modal-title" id="modal-title">Didelis vaizdas</div>
+        <button type="button" class="modal-close" id="close-modal">Uždaryti</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
   <script>
     const visuals = {{ visuals_json|safe }};
     let currentView = 'iso';
@@ -251,7 +274,7 @@
 
     function pointsToString(points) { return points.map(p => `${p.x},${p.y}`).join(' '); }
 
-    function renderBlock(block, colorMap) {
+    function renderBlock(block, colorMap, large = false) {
       const container = block.container;
       const placements = [...block.placements].sort((a, b) => (a.z + a.y + a.x) - (b.z + b.y + b.x));
       let html = '';
@@ -264,29 +287,22 @@
 
       if (currentView === 'iso') {
         const dimSum = container.length + container.width + container.height;
-        const scale = Math.max(0.12, Math.min(0.22, 680 / Math.max(dimSum, 1)));
+        const scale = Math.max(0.12, Math.min(large ? 0.34 : 0.22, (large ? 980 : 680) / Math.max(dimSum, 1)));
         const isoA = iso(0, 0, 0, scale, 0, 0);
         const isoB = iso(container.length, 0, 0, scale, 0, 0);
         const isoC = iso(container.length, container.width, 0, scale, 0, 0);
         const isoD = iso(0, container.width, 0, scale, 0, 0);
         const isoTop = iso(container.length, container.width, container.height, scale, 0, 0);
-
         const allPts = [isoA, isoB, isoC, isoD, isoTop];
         placements.forEach(p => {
           const polys = boxPolygons(p, scale, 0, 0);
           allPts.push(...polys.top, ...polys.left, ...polys.right);
         });
-
-        const xs = allPts.map(p => p.x);
-        const ys = allPts.map(p => p.y);
-        const minX = Math.min(...xs), maxX = Math.max(...xs);
-        const minY = Math.min(...ys), maxY = Math.max(...ys);
-        const pad = 80;
-        const shiftX = pad - minX;
-        const shiftY = pad - minY;
-        const viewW = Math.ceil((maxX - minX) + pad * 2);
-        const viewH = Math.ceil((maxY - minY) + pad * 2);
-
+        const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+        const pad = large ? 120 : 80;
+        const shiftX = pad - minX, shiftY = pad - minY;
+        const viewW = Math.ceil((maxX - minX) + pad * 2), viewH = Math.ceil((maxY - minY) + pad * 2);
         const move = pt => ({ x: pt.x + shiftX, y: pt.y + shiftY });
         html += '<div class="viz-canvas">';
         html += `<svg viewBox="0 0 ${viewW} ${viewH}" preserveAspectRatio="xMinYMin meet">`;
@@ -300,17 +316,14 @@
         });
         html += '</svg></div>';
       } else {
-        const svgW = 1200, svgH = 760, pad = 40;
+        const svgW = large ? 1800 : 1200, svgH = large ? 1100 : 760, pad = 40;
         const scale = Math.min((svgW - pad * 2) / container.length, (svgH - pad * 2) / container.width);
         html += '<div class="viz-canvas">';
         html += `<svg viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet">`;
         html += `<rect x="${pad}" y="${pad}" width="${container.length * scale}" height="${container.width * scale}" fill="#eef4fb" stroke="#b8c7dd" stroke-width="2"></rect>`;
         placements.forEach(p => {
           const color = colorForSku(p.sku, colorMap);
-          const x = pad + p.x * scale;
-          const y = pad + p.y * scale;
-          const w = p.length * scale;
-          const h = p.width * scale;
+          const x = pad + p.x * scale, y = pad + p.y * scale, w = p.length * scale, h = p.width * scale;
           html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="0.88" stroke="#1f2937" stroke-width="0.8"></rect>`;
           html += `<text x="${x + 4}" y="${y + 14}" font-size="11" fill="#fff">${p.sku}</text>`;
         });
@@ -328,7 +341,7 @@
       return html;
     }
 
-    function renderVisualization(targetId, blocks) {
+    function renderVisualization(targetId, blocks, large = false) {
       const el = document.getElementById(targetId);
       if (!el) return;
       if (!blocks || !blocks.length) {
@@ -339,7 +352,7 @@
       let html = '';
       blocks.forEach((block, idx) => {
         html += `<div class="viz-title">${block.container.code}${blocks.length > 1 ? ' #' + (idx + 1) : ''}</div>`;
-        html += renderBlock(block, colorMap);
+        html += renderBlock(block, colorMap, large);
       });
       el.innerHTML = html;
       renderLegend(colorMap);
@@ -355,8 +368,24 @@
     function rerenderAll() {
       const singleBlocks = visuals.single ? [visuals.single] : [];
       const multiBlocks = visuals.multi || [];
-      renderVisualization('single-visualization', singleBlocks);
-      renderVisualization('multi-visualization', multiBlocks);
+      renderVisualization('single-visualization', singleBlocks, false);
+      renderVisualization('multi-visualization', multiBlocks, false);
+    }
+
+    function openLarge(title, blocks) {
+      const modal = document.getElementById('viz-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const modalBody = document.getElementById('modal-body');
+      modalTitle.textContent = title;
+      renderVisualization('modal-body', blocks, true);
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLarge() {
+      const modal = document.getElementById('viz-modal');
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
     }
 
     document.querySelectorAll('.view-btn').forEach(btn => {
@@ -366,6 +395,21 @@
         currentView = btn.dataset.view;
         rerenderAll();
       });
+    });
+
+    document.getElementById('open-single-large').addEventListener('click', () => {
+      const singleBlocks = visuals.single ? [visuals.single] : [];
+      openLarge('Didelis vienos paletės vaizdas', singleBlocks);
+    });
+
+    document.getElementById('open-multi-large').addEventListener('click', () => {
+      const multiBlocks = visuals.multi || [];
+      openLarge('Didelis kelių palečių vaizdas', multiBlocks);
+    });
+
+    document.getElementById('close-modal').addEventListener('click', closeLarge);
+    document.getElementById('viz-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'viz-modal') closeLarge();
     });
 
     rerenderAll();
