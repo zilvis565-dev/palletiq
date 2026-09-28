@@ -119,6 +119,25 @@ def can_fit(space: Space, dims: Tuple[int, int, int]) -> bool:
     return l <= space.length and w <= space.width and h <= space.height
 
 
+def rectangles_overlap_area(ax, ay, aw, ah, bx, by, bw, bh) -> int:
+    overlap_x = max(0, min(ax + aw, bx + bw) - max(ax, bx))
+    overlap_y = max(0, min(ay + ah, by + bh) - max(ay, by))
+    return overlap_x * overlap_y
+
+
+def support_ratio(placements: List[PackedItem], x: int, y: int, z: int, l: int, w: int) -> float:
+    if z == 0:
+        return 1.0
+    support_area = 0
+    for p in placements:
+        if p.z + p.height == z:
+            support_area += rectangles_overlap_area(x, y, l, w, p.x, p.y, p.length, p.width)
+    base_area = l * w
+    if base_area == 0:
+        return 0.0
+    return min(1.0, support_area / base_area)
+
+
 def score_placement(space: Space, dims: Tuple[int, int, int]) -> Tuple[int, int, int]:
     l, w, h = dims
     leftover = (space.length - l) + (space.width - w) + (space.height - h)
@@ -155,21 +174,17 @@ def prune_spaces(spaces: List[Space]) -> List[Space]:
     return pruned
 
 
-def sort_items(items: List[Item], big_boxes_bottom: bool = False) -> List[Item]:
+def sort_items(items: List[Item], big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False) -> List[Item]:
+    if big_boxes_bottom and heavier_boxes_bottom:
+        return sorted(items, key=lambda i: (item_volume(i), item_base_area(i), i.weight, max(i.length, i.width, i.height)), reverse=True)
     if big_boxes_bottom:
-        return sorted(
-            items,
-            key=lambda i: (item_volume(i), item_base_area(i), max(i.length, i.width, i.height), i.weight),
-            reverse=True,
-        )
-    return sorted(
-        items,
-        key=lambda i: (item_volume(i), max(i.length, i.width, i.height), i.weight),
-        reverse=True,
-    )
+        return sorted(items, key=lambda i: (item_volume(i), item_base_area(i), max(i.length, i.width, i.height), i.weight), reverse=True)
+    if heavier_boxes_bottom:
+        return sorted(items, key=lambda i: (i.weight, item_volume(i), item_base_area(i), max(i.length, i.width, i.height)), reverse=True)
+    return sorted(items, key=lambda i: (item_volume(i), max(i.length, i.width, i.height), i.weight), reverse=True)
 
 
-def pack_into_container(items: List[Item], container: Container, big_boxes_bottom: bool = False) -> Dict:
+def pack_into_container(items: List[Item], container: Container, big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85) -> Dict:
     if not container.active:
         return {'success': False, 'reason': 'Container inactive', 'container': container, 'placements': [], 'unplaced_items': items, 'used_volume': 0, 'total_volume': container_volume(container), 'utilization': 0.0, 'total_weight': 0.0}
 
@@ -180,13 +195,17 @@ def pack_into_container(items: List[Item], container: Container, big_boxes_botto
     spaces = [Space(0, 0, 0, container.length, container.width, container.height)]
     placements = []
     unplaced = []
-    sorted_items = sort_items(items, big_boxes_bottom=big_boxes_bottom)
+    sorted_items = sort_items(items, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom)
 
     for item in sorted_items:
         best_choice = None
         for space_idx, space in enumerate(spaces):
             for dims in get_orientations(item):
                 if can_fit(space, dims):
+                    l, w, h = dims
+                    ratio = support_ratio(placements, space.x, space.y, space.z, l, w)
+                    if ratio < min_support_ratio_value:
+                        continue
                     score = score_placement(space, dims)
                     candidate = (score, space_idx, space, dims)
                     if best_choice is None or candidate[0] < best_choice[0]:
@@ -209,9 +228,9 @@ def pack_into_container(items: List[Item], container: Container, big_boxes_botto
     return {'success': len(unplaced) == 0, 'reason': None if len(unplaced) == 0 else 'Not all items fit', 'container': container, 'placements': placements, 'unplaced_items': unplaced, 'used_volume': used_volume, 'total_volume': total_volume, 'utilization': utilization, 'total_weight': total_item_weight + container.tare_weight}
 
 
-def choose_best_container(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False) -> Dict:
+def choose_best_container(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85) -> Dict:
     expanded = expand_items(items)
-    results = [pack_into_container(expanded, c, big_boxes_bottom=big_boxes_bottom) for c in containers if c.active]
+    results = [pack_into_container(expanded, c, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value) for c in containers if c.active]
     successful = [r for r in results if r['success']]
     if not successful:
         return {'success': False, 'reason': 'No container could fit all items', 'all_results': results}
@@ -227,13 +246,13 @@ def choose_best_container(items: List[Item], containers: List[Container], mode: 
     return {'success': True, 'selected_container': best['container'], 'placements': best['placements'], 'utilization': best['utilization'], 'used_volume': best['used_volume'], 'total_volume': best['total_volume'], 'total_weight': best['total_weight'], 'all_results': results}
 
 
-def choose_multiple_containers(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False) -> Dict:
+def choose_multiple_containers(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85) -> Dict:
     remaining_items = expand_items(items)
     shipments = []
     while remaining_items:
         best_result = None
         for container in containers:
-            attempt = pack_into_container(remaining_items, container, big_boxes_bottom=big_boxes_bottom)
+            attempt = pack_into_container(remaining_items, container, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value)
             placed_count = len(attempt['placements'])
             if placed_count == 0:
                 continue
@@ -309,8 +328,8 @@ def main():
     box_master = load_box_master_from_csv('box_master.csv')
     pallets = load_containers_from_csv('pallets.csv')
     items = expand_order_lines(order_lines, box_master)
-    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=True)
-    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=True)
+    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85)
+    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85)
     export_single_result_to_csv(single_result, 'results.csv')
     export_multiple_results_to_csv(multi_result, 'results_multi.csv')
 
