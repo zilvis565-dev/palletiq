@@ -247,6 +247,7 @@ def index():
     delay_vertical_stacking = True
     floor_layer_priority_strength = 4
     strict_layer_first = True
+    large_box_floor_only = True
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -313,6 +314,7 @@ def index():
         floor_layer_priority_strength = int(request.form.get('floor_layer_priority_strength', '4') or '4')
         floor_layer_priority_strength = max(1, min(5, floor_layer_priority_strength))
         strict_layer_first = request.form.get('strict_layer_first') == 'on'
+        large_box_floor_only = request.form.get('large_box_floor_only') == 'on'
         pallet_options = serialize_pallet_options(pallets_rows)
 
         if action == 'run' and not error_message:
@@ -334,6 +336,7 @@ def index():
                     'delay_vertical_stacking': delay_vertical_stacking,
                     'floor_layer_priority_strength': floor_layer_priority_strength,
                     'strict_layer_first': strict_layer_first,
+                    'large_box_floor_only': large_box_floor_only,
                 }
 
                 if pallet_strategy == 'single':
@@ -395,6 +398,7 @@ def index():
         delay_vertical_stacking=delay_vertical_stacking,
         floor_layer_priority_strength=floor_layer_priority_strength,
         strict_layer_first=strict_layer_first,
+        large_box_floor_only=large_box_floor_only,
     )
 
 
