@@ -241,6 +241,8 @@ def index():
     minimize_mixing = True
     finish_current_sku_first = True
     layer_purity = True
+    strict_no_mix = False
+    grouping_strength = 3
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -299,6 +301,9 @@ def index():
         minimize_mixing = request.form.get('minimize_mixing') == 'on'
         finish_current_sku_first = request.form.get('finish_current_sku_first') == 'on'
         layer_purity = request.form.get('layer_purity') == 'on'
+        strict_no_mix = request.form.get('strict_no_mix') == 'on'
+        grouping_strength = int(request.form.get('grouping_strength', '3') or '3')
+        grouping_strength = max(1, min(5, grouping_strength))
         pallet_options = serialize_pallet_options(pallets_rows)
 
         if action == 'run' and not error_message:
@@ -314,6 +319,8 @@ def index():
                     'minimize_mixing': minimize_mixing,
                     'finish_current_sku_first': finish_current_sku_first,
                     'layer_purity': layer_purity,
+                    'strict_no_mix': strict_no_mix,
+                    'grouping_strength': grouping_strength,
                 }
 
                 if pallet_strategy == 'single':
@@ -369,6 +376,8 @@ def index():
         minimize_mixing=minimize_mixing,
         finish_current_sku_first=finish_current_sku_first,
         layer_purity=layer_purity,
+        strict_no_mix=strict_no_mix,
+        grouping_strength=grouping_strength,
     )
 
 
