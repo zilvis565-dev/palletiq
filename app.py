@@ -243,6 +243,9 @@ def index():
     layer_purity = True
     strict_no_mix = False
     grouping_strength = 3
+    prefer_floor_spread = True
+    delay_vertical_stacking = True
+    floor_layer_priority_strength = 4
 
     if request.method == 'POST':
         action = request.form.get('action', 'run')
@@ -304,6 +307,10 @@ def index():
         strict_no_mix = request.form.get('strict_no_mix') == 'on'
         grouping_strength = int(request.form.get('grouping_strength', '3') or '3')
         grouping_strength = max(1, min(5, grouping_strength))
+        prefer_floor_spread = request.form.get('prefer_floor_spread') == 'on'
+        delay_vertical_stacking = request.form.get('delay_vertical_stacking') == 'on'
+        floor_layer_priority_strength = int(request.form.get('floor_layer_priority_strength', '4') or '4')
+        floor_layer_priority_strength = max(1, min(5, floor_layer_priority_strength))
         pallet_options = serialize_pallet_options(pallets_rows)
 
         if action == 'run' and not error_message:
@@ -321,6 +328,9 @@ def index():
                     'layer_purity': layer_purity,
                     'strict_no_mix': strict_no_mix,
                     'grouping_strength': grouping_strength,
+                    'prefer_floor_spread': prefer_floor_spread,
+                    'delay_vertical_stacking': delay_vertical_stacking,
+                    'floor_layer_priority_strength': floor_layer_priority_strength,
                 }
 
                 if pallet_strategy == 'single':
@@ -378,6 +388,9 @@ def index():
         layer_purity=layer_purity,
         strict_no_mix=strict_no_mix,
         grouping_strength=grouping_strength,
+        prefer_floor_spread=prefer_floor_spread,
+        delay_vertical_stacking=delay_vertical_stacking,
+        floor_layer_priority_strength=floor_layer_priority_strength,
     )
 
 
