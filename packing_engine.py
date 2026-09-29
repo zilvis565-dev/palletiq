@@ -148,6 +148,16 @@ def has_floor_space_for_item(spaces: List[Space], item: Item) -> bool:
     return False
 
 
+def lowest_available_z_for_item(spaces: List[Space], item: Item) -> int | None:
+    valid_z = []
+    for space in spaces:
+        for dims in get_orientations(item):
+            if can_fit(space, dims):
+                valid_z.append(space.z)
+                break
+    return min(valid_z) if valid_z else None
+
+
 def score_placement(space: Space, dims: Tuple[int, int, int], item: Item, placements: List[PackedItem], current_sku: str | None = None, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3, has_same_sku_floor_space: bool = False) -> Tuple[int, int, int, int, int, int, int, int]:
     l, w, h = dims
     leftover = (space.length - l) + (space.width - w) + (space.height - h)
@@ -230,7 +240,7 @@ def sort_items(items: List[Item], big_boxes_bottom: bool = False, heavier_boxes_
     return sorted(items, key=lambda i: (item_volume(i), max(i.length, i.width, i.height), i.weight), reverse=True)
 
 
-def pack_into_container(items: List[Item], container: Container, big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3) -> Dict:
+def pack_into_container(items: List[Item], container: Container, big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3, strict_layer_first: bool = False) -> Dict:
     if not container.active:
         return {'success': False, 'reason': 'Container inactive', 'container': container, 'placements': [], 'unplaced_items': items, 'used_volume': 0, 'total_volume': container_volume(container), 'utilization': 0.0, 'total_weight': 0.0}
 
@@ -247,7 +257,10 @@ def pack_into_container(items: List[Item], container: Container, big_boxes_botto
     for item in sorted_items:
         best_choice = None
         has_same_sku_floor_space = has_floor_space_for_item([s for s in spaces if s.z == 0], item)
+        min_allowed_z = lowest_available_z_for_item(spaces, item) if strict_layer_first else None
         for space_idx, space in enumerate(spaces):
+            if strict_layer_first and min_allowed_z is not None and space.z != min_allowed_z:
+                continue
             for dims in get_orientations(item):
                 if can_fit(space, dims):
                     l, w, h = dims
@@ -278,9 +291,9 @@ def pack_into_container(items: List[Item], container: Container, big_boxes_botto
     return {'success': len(unplaced) == 0, 'reason': None if len(unplaced) == 0 else 'Not all items fit', 'container': container, 'placements': placements, 'unplaced_items': unplaced, 'used_volume': used_volume, 'total_volume': total_volume, 'utilization': utilization, 'total_weight': total_item_weight + container.tare_weight}
 
 
-def choose_best_container(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3) -> Dict:
+def choose_best_container(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3, strict_layer_first: bool = False) -> Dict:
     expanded = expand_items(items)
-    results = [pack_into_container(expanded, c, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value, prefer_same_sku_blocks=prefer_same_sku_blocks, minimize_mixing=minimize_mixing, finish_current_sku_first=finish_current_sku_first, layer_purity=layer_purity, strict_no_mix=strict_no_mix, grouping_strength=grouping_strength, prefer_floor_spread=prefer_floor_spread, delay_vertical_stacking=delay_vertical_stacking, floor_layer_priority_strength=floor_layer_priority_strength) for c in containers if c.active]
+    results = [pack_into_container(expanded, c, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value, prefer_same_sku_blocks=prefer_same_sku_blocks, minimize_mixing=minimize_mixing, finish_current_sku_first=finish_current_sku_first, layer_purity=layer_purity, strict_no_mix=strict_no_mix, grouping_strength=grouping_strength, prefer_floor_spread=prefer_floor_spread, delay_vertical_stacking=delay_vertical_stacking, floor_layer_priority_strength=floor_layer_priority_strength, strict_layer_first=strict_layer_first) for c in containers if c.active]
     successful = [r for r in results if r['success']]
     if not successful:
         return {'success': False, 'reason': 'No container could fit all items', 'all_results': results}
@@ -296,13 +309,13 @@ def choose_best_container(items: List[Item], containers: List[Container], mode: 
     return {'success': True, 'selected_container': best['container'], 'placements': best['placements'], 'utilization': best['utilization'], 'used_volume': best['used_volume'], 'total_volume': best['total_volume'], 'total_weight': best['total_weight'], 'all_results': results}
 
 
-def choose_multiple_containers(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3) -> Dict:
+def choose_multiple_containers(items: List[Item], containers: List[Container], mode: str = 'smallest_fit', big_boxes_bottom: bool = False, heavier_boxes_bottom: bool = False, min_support_ratio_value: float = 0.85, prefer_same_sku_blocks: bool = False, minimize_mixing: bool = False, finish_current_sku_first: bool = False, layer_purity: bool = False, strict_no_mix: bool = False, grouping_strength: int = 2, prefer_floor_spread: bool = False, delay_vertical_stacking: bool = False, floor_layer_priority_strength: int = 3, strict_layer_first: bool = False) -> Dict:
     remaining_items = expand_items(items)
     shipments = []
     while remaining_items:
         best_result = None
         for container in containers:
-            attempt = pack_into_container(remaining_items, container, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value, prefer_same_sku_blocks=prefer_same_sku_blocks, minimize_mixing=minimize_mixing, finish_current_sku_first=finish_current_sku_first, layer_purity=layer_purity, strict_no_mix=strict_no_mix, grouping_strength=grouping_strength, prefer_floor_spread=prefer_floor_spread, delay_vertical_stacking=delay_vertical_stacking, floor_layer_priority_strength=floor_layer_priority_strength)
+            attempt = pack_into_container(remaining_items, container, big_boxes_bottom=big_boxes_bottom, heavier_boxes_bottom=heavier_boxes_bottom, min_support_ratio_value=min_support_ratio_value, prefer_same_sku_blocks=prefer_same_sku_blocks, minimize_mixing=minimize_mixing, finish_current_sku_first=finish_current_sku_first, layer_purity=layer_purity, strict_no_mix=strict_no_mix, grouping_strength=grouping_strength, prefer_floor_spread=prefer_floor_spread, delay_vertical_stacking=delay_vertical_stacking, floor_layer_priority_strength=floor_layer_priority_strength, strict_layer_first=strict_layer_first)
             placed_count = len(attempt['placements'])
             if placed_count == 0:
                 continue
@@ -378,8 +391,8 @@ def main():
     box_master = load_box_master_from_csv('box_master.csv')
     pallets = load_containers_from_csv('pallets.csv')
     items = expand_order_lines(order_lines, box_master)
-    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85, prefer_same_sku_blocks=True, minimize_mixing=True, finish_current_sku_first=True, layer_purity=True, strict_no_mix=False, grouping_strength=3, prefer_floor_spread=True, delay_vertical_stacking=True, floor_layer_priority_strength=4)
-    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85, prefer_same_sku_blocks=True, minimize_mixing=True, finish_current_sku_first=True, layer_purity=True, strict_no_mix=False, grouping_strength=3, prefer_floor_spread=True, delay_vertical_stacking=True, floor_layer_priority_strength=4)
+    single_result = choose_best_container(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85, prefer_same_sku_blocks=True, minimize_mixing=True, finish_current_sku_first=True, layer_purity=True, strict_no_mix=False, grouping_strength=3, prefer_floor_spread=True, delay_vertical_stacking=True, floor_layer_priority_strength=4, strict_layer_first=True)
+    multi_result = choose_multiple_containers(items, pallets, mode='smallest_fit', big_boxes_bottom=True, heavier_boxes_bottom=True, min_support_ratio_value=0.85, prefer_same_sku_blocks=True, minimize_mixing=True, finish_current_sku_first=True, layer_purity=True, strict_no_mix=False, grouping_strength=3, prefer_floor_spread=True, delay_vertical_stacking=True, floor_layer_priority_strength=4, strict_layer_first=True)
     export_single_result_to_csv(single_result, 'results.csv')
     export_multiple_results_to_csv(multi_result, 'results_multi.csv')
 
